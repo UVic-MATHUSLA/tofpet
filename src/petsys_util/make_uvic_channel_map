@@ -1,0 +1,57 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+from petsys import daqd, config, info
+from copy import deepcopy
+import argparse
+import struct
+import sys
+
+
+def main():
+    parser = argparse.ArgumentParser(description='Make a channel and trigger map for UVic teststand')
+    parser.add_argument("-o", type=str, required=True, help="Output file")
+    args = parser.parse_args()
+
+    channelOutputFile = open(args.o + "_channel.tsv", "w")
+    triggerOutputFile = open(args.o + "_trigger.tsv", "w")
+
+    connection = daqd.Connection()
+    connection.initializeSystem(skipFEM=True)
+
+    # [channel, regionID, xi, yi]
+    region_list = [[0,0,1,0],   [1,1,1,1],   [2,2,2,3],   [3,3,0,1],
+                   [4,4,0,2],   [5,5,3,0],   [6,6,0,3],   [7,1,2,1],
+                   [8,7,1,2],   [9,8,3,4],   [10,5,0,0],  [11,6,3,3],
+                   [12,3,3,1],  [13,7,2,2],  [14,0,2,0],  [15,2,1,3],
+                   [16,9,6,1],  [17,10,7,0], [18,11,6,0], [19,12,7,1],
+                   [20,10,4,0], [21,12,4,1], [22,9,5,1],  [23,11,5,0],
+                   [24,13,7,3], [25,14,7,2], [26,15,6,3], [27,4,3,2],
+                   [28,16,6,2], [29,16,5,2], [30,15,5,3], [31,13,4,3],
+                   [32,14,4,2], [33,17,4,4], [34,18,4,5], [35,19,5,5],
+                   [36,20,5,4], [37,19,6,5], [38,21,3,5], [39,20,6,4],
+                   [40,18,7,5], [41,17,7,4], [42,22,4,7], [43,23,4,6],
+                   [44,24,5,7], [45,25,6,6], [46,25,5,6], [47,24,6,7],
+                   [48,22,7,7], [49,23,7,6], [50,8,0,4],  [51,26,3,7],
+                   [52,27,3,6], [53,28,2,6], [54,29,2,7], [55,29,1,7],
+                   [56,28,1,6], [57,21,0,5], [58,30,2,5], [59,31,1,4],
+                   [60,26,0,7], [61,30,1,5], [62,31,2,4], [63,27,0,6]]
+
+    #write channel map with columns: portID, slaveID chipID, channelID, regionID, xi, yi, x, y, z
+    for portID, slaveID in connection.getActiveFEBDs():
+        for chipID in range(2):
+            for channelID in range(64):
+                regionID = region_list[channelID][1]
+                xi = region_list[channelID][2]
+                yi = region_list[channelID][3]
+                channelOutputFile.write(f"{portID}\t{slaveID}\t{chipID}\t{channelID}\t{regionID}\t{xi}\t{yi}\t{0}\t{0}\t{0}\n")
+
+    #write trigger map with columns: regionID, regionID, trigger_type
+    for channelID in range(64):
+        triggerOutputFile.write(f"{region_list[channelID][1]}\t{region_list[channelID][1]}\tC\n")
+
+    channelOutputFile.close()
+    triggerOutputFile.close()
+    
+    if __name__ == '__main__':
+        main()
