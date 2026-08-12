@@ -39,7 +39,7 @@ def main():
 
     #write channel map with columns: portID, slaveID chipID, channelID, regionID, xi, yi, x, y, z
     for portID, slaveID in connection.getActiveFEBDs():
-        for chipID in range(2):
+        for chipID in range(16):
             for channelID in range(64):
                 regionID = region_list[channelID][1]
                 xi = region_list[channelID][2]
@@ -53,5 +53,5 @@ def main():
     channelOutputFile.close()
     triggerOutputFile.close()
     
-    if __name__ == '__main__':
-        main()
+if __name__ == '__main__':
+    main()
