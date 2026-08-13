@@ -16,6 +16,11 @@ import re
 from statistics import mean
 import os
 
+# Move stats box to the left of the plots
+ROOT.gStyle.SetStatX(0.35)      # 35% from left
+ROOT.gStyle.SetStatW(0.20)      # set width to 20% leaving edge at 15% from left
+ROOT.gstyle.SetStatY(0.90)      # 90% from bottom
+
 # Create the S-Curve function
 fSigmoid = ROOT.TF1("fSigmoid","[0]*ROOT::Math::normal_cdf(x,[1],[2])",0,64);
 fSigmoid.SetParName(0, "C")
@@ -320,14 +325,7 @@ def getBaselineAndNoise(profile):
 		# Generate a uniquely-named canvas to prevent ROOT from overwriting memory spaces
 		c = ROOT.TCanvas(f"canvas_{pName}", f"Sigmoid Fit - {pName}", 800, 600)
 		# 2. Draw the profile (the fitted TF1 automatically overlays when drawn)
-		profile.Draw("EP")# Move stats box to right 
-		st = profile.GetListOfFunctions().FindObject("stats")
-		st.SetX1NDC(0.15)
-		st.SetX2NDC(0.35)
-        st.SetY1NDC(0.65)
-        st.SetY2NDC(0.85)
-        c.Modified()
-        c.Update()
+		profile.Draw("EP")
 		# 3. Save the canvas to an image file named dynamically after the channel
 		c.SaveAs(f"{pName}_sigmoid_fit.png")
 		# 4. Explicitly close and delete the canvas pointer to avoid memory accumulation inside loop
