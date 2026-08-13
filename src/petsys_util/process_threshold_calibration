@@ -320,7 +320,14 @@ def getBaselineAndNoise(profile):
 		# Generate a uniquely-named canvas to prevent ROOT from overwriting memory spaces
 		c = ROOT.TCanvas(f"canvas_{pName}", f"Sigmoid Fit - {pName}", 800, 600)
 		# 2. Draw the profile (the fitted TF1 automatically overlays when drawn)
-		profile.Draw("EP") 
+		profile.Draw("EP")# Move stats box to right 
+		st = profile.GetListOfFunctions().FindObject("stats")
+		st.SetX1NDC(0.15)
+		st.SetX2NDC(0.35)
+        st.SetY1NDC(0.65)
+        st.SetY2NDC(0.85)
+        c.Modified()
+        c.Update()
 		# 3. Save the canvas to an image file named dynamically after the channel
 		c.SaveAs(f"{pName}_sigmoid_fit.png")
 		# 4. Explicitly close and delete the canvas pointer to avoid memory accumulation inside loop
