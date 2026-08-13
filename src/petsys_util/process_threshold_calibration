@@ -418,7 +418,7 @@ def main(argv):
 		thresholdValue = int(line[5])
 		v = float(line[6])
 		v += (random.random() - 0.5) * 1E-6 # Apply some ditthering because ROOT fits seem to misbehave when value=error=0
-		noiseProfiles[ (portID, slaveID, chipID, channelID, thresholdName)].Fill(thresholdValue, v)
+		noiseProfiles[(portID, slaveID, chipID, channelID, thresholdName)].Fill(thresholdValue, v)
 	inputFile.close()
 
 	outCalTableFile = open(args.outFilePrefix + ".tsv", "w")
@@ -429,7 +429,7 @@ def main(argv):
 	fields += [ "zero_T1", "zero_T2", "zero_E" ]
 	fields += [ "noise_T1", "noise_T2", "noise_E" ]
 
-	outCalTableFile.write("# " + ('\t').join(fields) + '\n')
+	outCalTableFile.write("#" + ('\t').join(fields) + '\n')
 	
 	gbaseline_T = {} 
 	gbaseline_E = {}
@@ -451,7 +451,7 @@ def main(argv):
 	zero_T1 = {}
 	zero_T2 = {}
 	zero_E = {}
-	validChannels = {} 
+	validChannels = {}
 	
 	chips = {}
 
