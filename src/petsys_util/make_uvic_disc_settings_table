@@ -1,0 +1,51 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+from petsys import daqd, config
+from copy import deepcopy
+import argparse
+import re
+import sys
+from sys import argv
+sys.path.append("/usr/local/lib")
+
+def normalizeAndSplit(l):
+	l = re.sub(r"\s*#.*", "", l)# Remove comments
+	l = re.sub(r"^\s*", '', l)	# Remove leading white space
+	l = re.sub(r"\s*$", '', l)	# Remove trailing whitespace
+	l = re.sub(r"\s+", '\t', l)	# Normalize whitespace to tabs
+	l = re.sub('\r', '', l)		# Remove \r
+	l = re.sub('\n', '', l)		# Remove \l
+	l = l.split('\t')
+	return l
+
+def main(argv):
+
+    parser = argparse.ArgumentParser(description='Make a UVic discriminator settings table')
+    parser.add_argument("--config", type=str, required=True, help="Configuration file")
+    parser.add_argument("-i", type=str, required=True, help="Input file")
+    parser.add_argument("-o", type=str, required=True, help="Output file")
+
+    args = parser.parse_args()
+    config = config.ConfigFromFile(args.config, loadMask=config.LOAD_DISC_CALIBRATION)
+
+    activeChannels = set()
+    inputFile = open(args.inputFilePrefix + "_baseline.tsv")
+    for line in inputFile:
+        line = normalizeAndSplit(line)
+        if line == ['']: continue
+        portID, slaveID, chipID, channelID, baseline_T, baseline_E, zero_T1, zero_T2, zero_E, noise_T1, noise_T2, noise_E = [int(v) for v in line]
+        activeChannels.add((portID, slaveID, chipID, channelID, baseline_T, baseline_E, zero_T1, zero_T2, zero_E, noise_T1, noise_T2, noise_E))
+    inputFile.close()
+
+    activeChannels = [x for x in activeChannels]    # Convert to list
+    activeChannels.sort()                           # Sort the list
+
+    outputFile = open(args.o, "w")
+    outputFile.write("#portID\tslaveID\tchipID\tchannelID\tvth_t1\tvth_t2\tvth_e\n")
+
+    for portID, slaveID, chipID, channelID, zero_T1, zero_T2, zero_E, noise_T1, noise_T2, noise_E in activeChannels:
+        outputFile.write("%d\t%d\t%d\t%d\t%d\t%d\t%d\n" % (portID, slaveID, chipID, channelID, zero_T1 + 3*noise_T1, zero_T2 + 4*noise_T2, zero_E + 5*noise_E))
+
+if __name__ == "__main__":
+	main(argv)
