@@ -30,7 +30,7 @@ def main(argv):
     config = config.ConfigFromFile(args.config, loadMask=config.LOAD_DISC_CALIBRATION)
 
     activeChannels = set()
-    inputFile = open(args.inputFilePrefix + "_baseline.tsv")
+    inputFile = open(args.inputFilePrefix + ".tsv")
     for line in inputFile:
         line = normalizeAndSplit(line)
         if line == ['']: continue
