@@ -23,14 +23,13 @@ fSigmoid.SetParName(1, "#sigma")
 fSigmoid.SetParName(2, "x0")
 fSigmoid.SetNpx(64)
 
-
 def format_chip_id(chip_tuple):
     return f"({chip_tuple[0]}, {chip_tuple[1]}, {chip_tuple[2]})"
 
 def print_statistics_tables(chips_data):
     table_configs = {
         "baseline": {
-	    "title": "BASELINE TRIM PARAMETER",
+            "title": "BASELINE TRIM PARAMETER",
             "columns": ["t", "e"],
             "column_headers": ["t", "e"],
             "col_widths": [7, 7],
@@ -52,13 +51,11 @@ def print_statistics_tables(chips_data):
         }
     }
 
-
     print("\n" + "=" * 95)
     print("TOFPET2 DISCRIMINATORS CALIBRATION SUMMARY".center(95))
     print("Baseline Trim • Baseline DC • Baseline noise • Threshold constraints".center(95))
     print("=" * 95 + "\n")
 
-    
     for mode, config in table_configs.items():
         title = config["title"]
         columns = config["columns"]
@@ -71,10 +68,7 @@ def print_statistics_tables(chips_data):
         num_stats = 3  # mean, min, max
         table_width = 13 + sum([(w + 3) * num_stats for w in col_widths]) - 4
         if title != "BASELINE TRIM PARAMETER": table_width = 13 + sum([(w + 3) * num_stats for w in col_widths]) - 7
-
-        #print(f"\n{'=' * table_width}")
         print(pad + f"{title:^{table_width}}")
-        #print(f"{'=' * table_width}")
         
         # Build table header
         header_parts = []
@@ -155,14 +149,12 @@ def print_statistics_tables(chips_data):
         footer_parts.append("┘")
         print(pad + "".join(footer_parts)+"\n")
 
-    pad = " " * 6   
+    pad = " " * 6
     print(pad + f"{'THRESHOLD CONFIGURATION CONSTRAINTS':^83}")
-    
-    
     
     summary_table = f"""┌─────────────────┬────────────────┬───────────────┬───────────────┬───────────────┐
       │     Chip ID     │  Uncalibrated  │  Max settable │  Max settable │  Max settable │
-      │                 │    channels    │     vth_t1    │    vth_t2     │     vth_e     │ 
+      │                 │    channels    │     vth_t1    │    vth_t2     │     vth_e     │
       ├─────────────────┼────────────────┼───────────────┼───────────────┼───────────────┤"""
     
     print(pad + summary_table)
@@ -256,7 +248,6 @@ def write_statistics_tables(chips_data, output_file):
             t1_stats = baseline_data.get("t1", [None, None, None, None])
             t2_stats = baseline_data.get("t2", [None, None, None, None])
             e_stats  = baseline_data.get("e",  [None, None, None, None])
-
             uncalibrated = 64-len(chip_data.get("validChannels", []))
 
             def safe_int(stats):
@@ -272,14 +263,12 @@ def write_statistics_tables(chips_data, output_file):
                 safe_int(t2_stats),
                 safe_int(e_stats),
             ]
-
             f.write("\t".join(row) + "\n")
-
         f.write("\n")
-        
+
 
 def normalizeAndSplit(l):
-	l = re.sub(r"\s*#.*", "", l)	# Remove comments
+	l = re.sub(r"\s*#.*", "", l)# Remove comments
 	l = re.sub(r"^\s*", '', l)	# Remove leading white space
 	l = re.sub(r"\s*$", '', l)	# Remove trailing whitespace
 	l = re.sub(r"\s+", '\t', l)	# Normalize whitespace to tabs
@@ -287,6 +276,7 @@ def normalizeAndSplit(l):
 	l = re.sub('\n', '', l)		# Remove \l
 	l = l.split('\t')
 	return l
+
 
 def getBaselineAndNoise(profile):
 	pName = profile.GetName()
@@ -299,7 +289,6 @@ def getBaselineAndNoise(profile):
 	b1 = profile.FindFirstBinAbove(0.2)
 	if b1 == b2:
 		b1 = b2 - 1
-
 
 	x1 = profile.GetBinCenter(b1)
 	x2 = profile.GetBinCenter(b2)
@@ -318,25 +307,31 @@ def getBaselineAndNoise(profile):
 	sigma = 0.5 / m
 
 	fSigmoid.FixParameter(0, 1.0);
-
 	fSigmoid.SetParameter(1, sigma);
 	fSigmoid.SetParLimits(1, 0.05, 2*sigma)
-
 	fSigmoid.SetParameter(2, mu)
 	fSigmoid.SetParLimits(2, mu - 2*sigma, mu+2*sigma)
-
 	profile.Fit("fSigmoid", "Q", "", 0, 64)
 	f = profile.GetFunction("fSigmoid")
 
 	if f:
-			mu = f.GetParameter(2)
-			sigma = f.GetParameter(1)
+		mu = f.GetParameter(2)
+		sigma = f.GetParameter(1)
+		# Generate a uniquely-named canvas to prevent ROOT from overwriting memory spaces
+		c = ROOT.TCanvas(f"canvas_{pName}", f"Sigmoid Fit - {pName}", 800, 600)
+		# 2. Draw the profile (the fitted TF1 automatically overlays when drawn)
+		profile.Draw("EP") 
+		# 3. Save the canvas to an image file named dynamically after the channel
+		c.SaveAs(f"{pName}_sigmoid_fit.png")
+		# 4. Explicitly close and delete the canvas pointer to avoid memory accumulation inside loop
+		c.Close()
+		ROOT.gROOT.Delete(f"canvas_{pName}")
 	else:
 		print(f"WARNING: {pName} failed to fit")
 
 	return mu, sigma
 
-        
+
 def getThresholdForRate(profile, rate):
 	threshold = profile.FindFirstBinAbove(rate) - profile.FindBin(0)
 	if threshold > 63:
@@ -379,10 +374,10 @@ def main(argv):
 
 	ROOT.gROOT.SetBatch(True)
 	rootFileNoise = None
-        
+
 	if args.saveNoiseFile:
 		rootFileNoise = ROOT.TFile(args.outFilePrefix + "_noise.root", "RECREATE")
-      
+
 	baselineSettings = {}
 	activeChannels = set()
 	activeChips = set()
@@ -398,10 +393,9 @@ def main(argv):
 
 	activeChannels = [ x for x in activeChannels ] # Convert to list
 	activeChannels.sort() # and sort the list
-
 	activeChips = [ x for x in activeChips ] # Convert to list
 	activeChips.sort() # and sort the list
-        
+
 	noiseProfiles = {}
 	for thresholdName in ["vth_t1", "vth_t2", "vth_e"]:
 		for portID, slaveID, chipID, channelID in activeChannels:
@@ -422,12 +416,9 @@ def main(argv):
 		noiseProfiles[ (portID, slaveID, chipID, channelID, thresholdName)].Fill(thresholdValue, v)
 	inputFile.close()
 
-	
-
 	outCalTableFile = open(args.outFilePrefix + ".tsv", "w")
 
 	rates =  [ 10E3, 20E3, 50E3, 100E3 ]
-
 	fields = [ "portID", "slaveID", "chipID", "channelID" ]
 	fields += [ "baseline_T", "baseline_E" ]
 	fields += [ "zero_T1", "zero_T2", "zero_E" ]
@@ -458,7 +449,7 @@ def main(argv):
 	validChannels = {} 
 	
 	chips = {}
-        
+
 	for portID, slaveID, chipID in activeChips:
 		gbaseline_T[(portID, slaveID, chipID)] = ROOT.TGraph(64)
 		gbaseline_E[(portID, slaveID, chipID)] = ROOT.TGraph(64)
@@ -482,13 +473,11 @@ def main(argv):
 	for portID, slaveID, chipID, channelID in activeChannels:
 
 		b_T, b_E = baselineSettings[(portID, slaveID, chipID, channelID)] 
-        
 		gbaseline_T[(portID, slaveID, chipID)].SetPoint(nPoints[(portID, slaveID, chipID)],channelID, b_T)
 		gbaseline_E[(portID, slaveID, chipID)].SetPoint(nPoints[(portID, slaveID, chipID)],channelID, b_E)
 		
 		z_T1, n_T1 = getBaselineAndNoise(noiseProfiles[(portID, slaveID, chipID, channelID, "vth_t1")])
 		z_T2, n_T2 = getBaselineAndNoise(noiseProfiles[(portID, slaveID, chipID, channelID, "vth_t2")])
-
 		# WARNING: Scan is not working well for vth_E
 		z_E, n_E = getBaselineAndNoise(noiseProfiles[(portID, slaveID, chipID, channelID, "vth_e")])
 		
@@ -512,7 +501,6 @@ def main(argv):
 		baseline_E[(portID, slaveID, chipID)].append(b_E)
 
 		# Channel will only be valid if all three discriminators have valid baseline measurements
-
 		noise_T1[(portID, slaveID, chipID)].append(n_T1)
 		noise_T2[(portID, slaveID, chipID)].append(n_T2)
 		noise_E[(portID, slaveID, chipID)].append(n_E)
@@ -522,7 +510,6 @@ def main(argv):
 		if all(z > -1 for z in (z_T1, z_T2, z_E)):
 			validChannels[(portID, slaveID, chipID)].append(channelID)
 			
-                
 	for portID, slaveID, chipID in activeChips:
 
 		gbaseline_T[(portID, slaveID, chipID)].Set(nPoints[(portID, slaveID, chipID)])
@@ -539,37 +526,37 @@ def main(argv):
 						max(zero_T1[(portID, slaveID, chipID)][i] for i in validChannels[(portID, slaveID, chipID)])]
 		
 		zero_t2_stats = [mean(zero_T2[(portID, slaveID, chipID)][i] for i in validChannels[(portID, slaveID, chipID)]),
-				   		min(zero_T2[(portID, slaveID, chipID)][i] for i in validChannels[(portID, slaveID, chipID)]),
+						min(zero_T2[(portID, slaveID, chipID)][i] for i in validChannels[(portID, slaveID, chipID)]),
 						max(zero_T2[(portID, slaveID, chipID)][i] for i in validChannels[(portID, slaveID, chipID)])]
 
 		zero_e_stats =  [mean(zero_E[(portID, slaveID, chipID)][i] for i in validChannels[(portID, slaveID, chipID)]),
-				   		min(zero_E[(portID, slaveID, chipID)][i] for i in validChannels[(portID, slaveID, chipID)]),
+						min(zero_E[(portID, slaveID, chipID)][i] for i in validChannels[(portID, slaveID, chipID)]),
 						max(zero_E[(portID, slaveID, chipID)][i] for i in validChannels[(portID, slaveID, chipID)])]
 		
 		noise_t1_stats = [mean(noise_T1[(portID, slaveID, chipID)][i] for i in validChannels[(portID, slaveID, chipID)]),
-				   		min(noise_T1[(portID, slaveID, chipID)][i] for i in validChannels[(portID, slaveID, chipID)]),
+						min(noise_T1[(portID, slaveID, chipID)][i] for i in validChannels[(portID, slaveID, chipID)]),
 						max(noise_T1[(portID, slaveID, chipID)][i] for i in validChannels[(portID, slaveID, chipID)])]
 
 		noise_t2_stats = [mean(noise_T2[(portID, slaveID, chipID)][i] for i in validChannels[(portID, slaveID, chipID)]),
-				   		min(noise_T2[(portID, slaveID, chipID)][i] for i in validChannels[(portID, slaveID, chipID)]),
+						min(noise_T2[(portID, slaveID, chipID)][i] for i in validChannels[(portID, slaveID, chipID)]),
 						max(noise_T2[(portID, slaveID, chipID)][i] for i in validChannels[(portID, slaveID, chipID)])]
 
 		noise_e_stats = [mean(noise_E[(portID, slaveID, chipID)][i] for i in validChannels[(portID, slaveID, chipID)]),
-				   		min(noise_E[(portID, slaveID, chipID)][i] for i in validChannels[(portID, slaveID, chipID)]),
+						min(noise_E[(portID, slaveID, chipID)][i] for i in validChannels[(portID, slaveID, chipID)]),
 						max(noise_E[(portID, slaveID, chipID)][i] for i in validChannels[(portID, slaveID, chipID)])]
 		
 		baseline_t_stats = [mean(baseline_T[(portID, slaveID, chipID)][i] for i in validChannels[(portID, slaveID, chipID)]),
-				   		   min(baseline_T[(portID, slaveID, chipID)][i] for i in validChannels[(portID, slaveID, chipID)]),
-					       max(baseline_T[(portID, slaveID, chipID)][i] for i in validChannels[(portID, slaveID, chipID)])]
+						min(baseline_T[(portID, slaveID, chipID)][i] for i in validChannels[(portID, slaveID, chipID)]),
+						max(baseline_T[(portID, slaveID, chipID)][i] for i in validChannels[(portID, slaveID, chipID)])]
 		
 		baseline_e_stats = [mean(baseline_E[(portID, slaveID, chipID)][i] for i in validChannels[(portID, slaveID, chipID)]),
-				   		   min(baseline_E[(portID, slaveID, chipID)][i] for i in validChannels[(portID, slaveID, chipID)]),
-					       max(baseline_E[(portID, slaveID, chipID)][i] for i in validChannels[(portID, slaveID, chipID)])]
+							min(baseline_E[(portID, slaveID, chipID)][i] for i in validChannels[(portID, slaveID, chipID)]),
+							max(baseline_E[(portID, slaveID, chipID)][i] for i in validChannels[(portID, slaveID, chipID)])]
 
 
 		chips[(portID, slaveID, chipID)] = {
 						"validChannels" : validChannels[(portID, slaveID, chipID)],
-                        "baseline": {       
+                        "baseline": {
                                 "t": baseline_t_stats,
                                 "e": baseline_e_stats
                         },
@@ -586,39 +573,28 @@ def main(argv):
                 }
 
 	c2 = ROOT.TCanvas("c2", "c2", 1200, 800)
-
 	c_blue   = ROOT.TColor.GetColor(52, 116, 186)
 	c_orange = ROOT.TColor.GetColor(230, 126, 34)
 	c_green  = ROOT.TColor.GetColor(39, 174, 96)
 
-
 	for portID, slaveID, chipID in activeChips:
 		c2.Divide(3, 3)
-
 		c2.cd(1)
 		plot_graph(gbaseline_T[(portID, slaveID, chipID)], "T Trim", c_blue, 64)
-
 		c2.cd(3)
 		plot_graph(gbaseline_E[(portID, slaveID, chipID)], "E Trim", c_green, 8)
-
 		c2.cd(4)
 		plot_graph(gzero_T1[(portID, slaveID, chipID)], "T1 Baseline DC", c_blue, 64)
-
 		c2.cd(5)
 		plot_graph(gzero_T2[(portID, slaveID, chipID)], "T2 Baseline DC", c_orange, 64)
-
 		c2.cd(6)
 		plot_graph(gzero_E[(portID, slaveID, chipID)], "E Baseline DC", c_green, 64)
-
 		c2.cd(7)
 		plot_graph(gnoise_T1[(portID, slaveID, chipID)], "T1 Baseline Noise", c_blue, 4)
-
 		c2.cd(8)
 		plot_graph(gnoise_T2[(portID, slaveID, chipID)], "T2 Baseline Noise", c_orange, 4)
-
 		c2.cd(9)
 		plot_graph(gnoise_E[(portID, slaveID, chipID)], "E Baseline Noise", c_green, 4)
-
 		plotName = "%s_%02d_%02d_%02d.pdf" % (args.outFilePrefix, portID, slaveID, chipID)
 		c2.SaveAs(plotName)
 
@@ -636,7 +612,6 @@ def main(argv):
 	
 	if not os.path.exists(inputDarksFileName):
 		return  # or exit the function
-	
 	
 	rootFileDarks = ROOT.TFile(args.outFilePrefix + "_dark_rates.root", "RECREATE") 
   
@@ -656,12 +631,10 @@ def main(argv):
 		thresholdValue = int(line[5])
 		v = float(line[6])
 		darkProfiles[ (portID, slaveID, chipID, channelID, thresholdName)].Fill(thresholdValue, v)
-                
+
 	inputFile.close()
 
 	color = ROOT.TColor.GetColor(60, 90, 140)
-
-
 
 	for key, prof in darkProfiles.items():
 		if prof is None:
@@ -723,9 +696,5 @@ def main(argv):
 	rootFileDarks.Close()
 
 
-
-        
-
-    
 if __name__ == "__main__":
 	main(argv)
