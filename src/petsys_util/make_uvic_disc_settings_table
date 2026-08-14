@@ -1,62 +1,56 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from petsys import daqd, config
-from copy import deepcopy
+from petsys import config
 import argparse
 import re
-import sys
 from sys import argv
-sys.path.append("/usr/local/lib")
 
-def normalizeAndSplit(l):
-	l = re.sub(r"\s*#.*", "", l)# Remove comments
-	l = re.sub(r"^\s*", '', l)	# Remove leading white space
-	l = re.sub(r"\s*$", '', l)	# Remove trailing whitespace
-	l = re.sub(r"\s+", '\t', l)	# Normalize whitespace to tabs
-	l = re.sub('\r', '', l)		# Remove \r
-	l = re.sub('\n', '', l)		# Remove \l
-	l = l.split('\t')
-	return l
-
-def main(argv):
-
-    parser = argparse.ArgumentParser(description='Make a UVic discriminator settings table')
-    parser.add_argument("--config", type=str, required=True, help="Configuration file")
-    parser.add_argument("-i", type=str, dest="inputFilePrefix", required=True, help="Input file prefix")
-    parser.add_argument("-o", type=str, dest="outputFilePrefix", required=True, help="Output file prefix")
-    args = parser.parse_args()
+parser = argparse.ArgumentParser(description='Make a UVic discriminator settings table')
+parser.add_argument("--config", type=str, required=True, help="Configuration file")
+parser.add_argument("-i", type=str, dest="inputFilePrefix", required=True, help="Input file prefix")
+parser.add_argument("-o", type=str, dest="outputFilePrefix", required=True, help="Output file prefix")
+args = parser.parse_args()
+config = config.ConfigFromFile(args.config, loadMask=config.LOAD_DISC_CALIBRATION)
     
-    activeChannels = set()
-    inputFile = open(args.inputFilePrefix + ".tsv")
-    for line in inputFile:
-        line = normalizeAndSplit(line)
-        if line == ['']: continue
-        for i, v in enumerate(line):
-            if   i == 0: portID = int(v)
-            elif i == 1: slaveID = int(v)
-            elif i == 2: chipID = int(v)
-            elif i == 3: channelID = int(v)
-            elif i == 4: baseline_T = float(v)
-            elif i == 5: baseline_E = float(v)
-            elif i == 6: zero_T1 = float(v)
-            elif i == 7: zero_T2 = float(v)
-            elif i == 8: zero_E = float(v)
-            elif i == 9: noise_T1 = float(v)
-            elif i == 10: noise_T2 = float(v)
-            elif i == 11: noise_E = float(v)
-        activeChannels.add((portID, slaveID, chipID, channelID, baseline_T, baseline_E, zero_T1, zero_T2, zero_E, noise_T1, noise_T2, noise_E))
-    inputFile.close()
+activeChannels = set()
+inputFile = open(args.inputFilePrefix + ".tsv")
+for line in inputFile:
+    line = re.sub(r"\s*#.*", "", line)  # Remove comments
+    line = re.sub(r"^\s*", '', line)	# Remove leading white space
+    line = re.sub(r"\s*$", '', line)	# Remove trailing white space
+    line = re.sub(r"\s+", '\t', line)	# Normalize white space to tabs
+    line = re.sub('\r', '', line)		# Remove \r
+    line = re.sub('\n', '', line)		# Remove \l
+    line = line.split('\t')
+    if line == ['']: continue
+    for i, v in enumerate(line):
+        if   i == 0: portID = int(v)
+        elif i == 1: slaveID = int(v)
+        elif i == 2: chipID = int(v)
+        elif i == 3: channelID = int(v)
+        elif i == 4: baseline_T = float(v)
+        elif i == 5: baseline_E = float(v)
+        elif i == 6: zero_T1 = float(v)
+        elif i == 7: zero_T2 = float(v)
+        elif i == 8: zero_E = float(v)
+        elif i == 9: noise_T1 = float(v)
+        elif i == 10: noise_T2 = float(v)
+        elif i == 11: noise_E = float(v)
+    activeChannels.add((portID, slaveID, chipID, channelID, baseline_T, baseline_E, zero_T1, zero_T2, zero_E, noise_T1, noise_T2, noise_E))
+inputFile.close()
 
-    activeChannels = [x for x in activeChannels]    # Convert to list
-    activeChannels.sort()                           # Sort the list
+activeChannels = [x for x in activeChannels]    # Convert to list
+activeChannels.sort()                           # Sort the list
 
-    outputFile = open(args.outputFilePrefix + ".tsv", "w")
-    outputFile.write("#portID\tslaveID\tchipID\tchannelID\tvth_t1\tvth_t2\tvth_e\n")
+outputFile = open(args.outputFilePrefix + "_var.tsv", "w")
+outputFile.write("#portID\tslaveID\tchipID\tchannelID\tvth_t1\tvth_t2\tvth_e\n")
 
-    for portID, slaveID, chipID, channelID, baseline_T, baseline_E, zero_T1, zero_T2, zero_E, noise_T1, noise_T2, noise_E in activeChannels:
-        outputFile.write("%d\t%d\t%d\t%d\t%f\t%f\t%f\n" % (portID, slaveID, chipID, channelID, zero_T1 + 3*noise_T1, zero_T2 + 4*noise_T2, zero_E + 5*noise_E))
-    outputFile.close()
+for portID, slaveID, chipID, channelID, baseline_T, baseline_E, zero_T1, zero_T2, zero_E, noise_T1, noise_T2, noise_E in activeChannels:
+    vth_t1 = config.mapAsicChannelThresholdToDAC((portID, slaveID, chipID, channelID), "vth_t1", zero_T1 + 3*noise_T1)
+    vth_t2 = config.mapAsicChannelThresholdToDAC((portID, slaveID, chipID, channelID), "vth_t2", zero_T2 + 4*noise_T2)
+    vth_e = config.mapAsicChannelThresholdToDAC((portID, slaveID, chipID, channelID), "vth_e", zero_E + 5*noise_E)
+    outputFile.write("%d\t%d\t%d\t%d\t%f\t%f\t%f\n" % (portID, slaveID, chipID, channelID, vth_t1, vth_t2, vth_e))
 
-if __name__ == "__main__":
-	main(argv)
+outputFile.close()
+
