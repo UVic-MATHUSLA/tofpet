@@ -8,6 +8,8 @@ import argparse
 parser = argparse.ArgumentParser(description='Make a simple discriminator settings table')
 parser.add_argument("--config", type=str, required=True, help="Configuration file")
 parser.add_argument("--vth_t1", type=int, required=True, help="Discriminator T1 (DAC above zero)")
+parser.add_argument("--vth_t2", type=int, required=True, help="Discriminator T2 (DAC above zero)")
+parser.add_argument("--vth_e", type=int, required=True, help="Discriminator E (DAC above zero)")
 parser.add_argument("-o", type=str, required=True, help="Output file")
 args = parser.parse_args()
 config = config.ConfigFromFile(args.config, loadMask=config.LOAD_DISC_CALIBRATION)
