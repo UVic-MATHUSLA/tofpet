@@ -23,29 +23,40 @@ def main(argv):
 
     parser = argparse.ArgumentParser(description='Make a UVic discriminator settings table')
     parser.add_argument("--config", type=str, required=True, help="Configuration file")
-    parser.add_argument("-i", type=str, required=True, help="Input file")
-    parser.add_argument("-o", type=str, required=True, help="Output file")
-
+    parser.add_argument("-i", type=str, dest="inputFilePrefix", required=True, help="Input file prefix")
+    parser.add_argument("-o", type=str, dest="outputFilePrefix", required=True, help="Output file prefix")
     args = parser.parse_args()
-    config = config.ConfigFromFile(args.config, loadMask=config.LOAD_DISC_CALIBRATION)
-
+    
     activeChannels = set()
     inputFile = open(args.inputFilePrefix + ".tsv")
     for line in inputFile:
         line = normalizeAndSplit(line)
         if line == ['']: continue
-        portID, slaveID, chipID, channelID, baseline_T, baseline_E, zero_T1, zero_T2, zero_E, noise_T1, noise_T2, noise_E = [int(v) for v in line]
+        for i, v in enumerate(line):
+            if   i == 0: portID = int(v)
+            elif i == 1: slaveID = int(v)
+            elif i == 2: chipID = int(v)
+            elif i == 3: channelID = int(v)
+            elif i == 4: baseline_T = float(v)
+            elif i == 5: baseline_E = float(v)
+            elif i == 6: zero_T1 = float(v)
+            elif i == 7: zero_T2 = float(v)
+            elif i == 8: zero_E = float(v)
+            elif i == 9: noise_T1 = float(v)
+            elif i == 10: noise_T2 = float(v)
+            elif i == 11: noise_E = float(v)
         activeChannels.add((portID, slaveID, chipID, channelID, baseline_T, baseline_E, zero_T1, zero_T2, zero_E, noise_T1, noise_T2, noise_E))
     inputFile.close()
 
     activeChannels = [x for x in activeChannels]    # Convert to list
     activeChannels.sort()                           # Sort the list
 
-    outputFile = open(args.o, "w")
+    outputFile = open(args.outputFilePrefix + ".tsv", "w")
     outputFile.write("#portID\tslaveID\tchipID\tchannelID\tvth_t1\tvth_t2\tvth_e\n")
 
-    for portID, slaveID, chipID, channelID, zero_T1, zero_T2, zero_E, noise_T1, noise_T2, noise_E in activeChannels:
-        outputFile.write("%d\t%d\t%d\t%d\t%d\t%d\t%d\n" % (portID, slaveID, chipID, channelID, zero_T1 + 3*noise_T1, zero_T2 + 4*noise_T2, zero_E + 5*noise_E))
+    for portID, slaveID, chipID, channelID, baseline_T, baseline_E, zero_T1, zero_T2, zero_E, noise_T1, noise_T2, noise_E in activeChannels:
+        outputFile.write("%d\t%d\t%d\t%d\t%f\t%f\t%f\n" % (portID, slaveID, chipID, channelID, zero_T1 + 3*noise_T1, zero_T2 + 4*noise_T2, zero_E + 5*noise_E))
+    outputFile.close()
 
 if __name__ == "__main__":
 	main(argv)
