@@ -11,18 +11,17 @@ import math
 from time import sleep, time
 import os
 
-LOAD_BIAS_CALIBRATION	= 0x00000001
-LOAD_BIAS_SETTINGS 	= 0x00000002
-LOAD_DISC_CALIBRATION	= 0x00000004
-LOAD_DISC_SETTINGS	= 0x00000008
-LOAD_MAP		= 0x00000010
-LOAD_QDCMODE_MAP	= 0x00000020
+LOAD_BIAS_CALIBRATION = 0x00000001
+LOAD_BIAS_SETTINGS = 0x00000002
+LOAD_DISC_CALIBRATION = 0x00000004
+LOAD_DISC_SETTINGS = 0x00000008
+LOAD_MAP = 0x00000010
+LOAD_QDCMODE_MAP = 0x00000020
 LOAD_FIRMWARE_QDC_CALIBRATION = 0x00000040
-LOAD_ALL		= 0xFFFFFFFF
-
-APPLY_BIAS_OFF		= 0x0
-APPLY_BIAS_PREBD	= 0x1
-APPLY_BIAS_ON		= 0x2
+LOAD_ALL = 0xFFFFFFFF
+APPLY_BIAS_OFF = 0x0
+APPLY_BIAS_PREBD = 0x1
+APPLY_BIAS_ON = 0x2
 
 def replace_variables(entry, cdir):
 	tmp = entry
@@ -33,7 +32,6 @@ def replace_variables(entry, cdir):
 
 def ConfigFromFile(configFileName, loadMask=LOAD_ALL):
 	cdir = os.path.dirname(configFileName)
-
 	config = Config()
 	configParser = configparser.RawConfigParser()
 	configParser.read(configFileName)
@@ -89,7 +87,6 @@ def ConfigFromFile(configFileName, loadMask=LOAD_ALL):
 		config._Config__asicChannelQDCModeTable = t
 		config._Config__loadMask |= LOAD_QDCMODE_MAP
 
-
 	# Load hw_trigger configuration IF hw_trigger section exists
 	hw_trigger_config = { "type" : None }
 	if (loadMask & LOAD_MAP) != 0:
@@ -97,13 +94,12 @@ def ConfigFromFile(configFileName, loadMask=LOAD_ALL):
 		hw_trigger_config["group_max_energy"] = configParser.getfloat("hw_trigger", "group_max_energy")
 		hw_trigger_config["group_min_multiplicity"] = configParser.getint("hw_trigger", "group_min_multiplicity")
 		hw_trigger_config["group_max_multiplicity"] = configParser.getint("hw_trigger", "group_max_multiplicity")
-
 		hw_trigger_config["febd_pre_window"] = configParser.getint("hw_trigger", "pre_window")
 		hw_trigger_config["febd_post_window"] = configParser.getint("hw_trigger", "post_window")
 		hw_trigger_config["coincidence_window"] = configParser.getint("hw_trigger", "coincidence_window")
 		hw_trigger_config["pre_window"] = 0
 		hw_trigger_config["post_window"] = 0
-        #hw_trigger_config["febd_pre_window"] = configParser.getint("hw_trigger", "febd_pre_window")
+		#hw_trigger_config["febd_pre_window"] = configParser.getint("hw_trigger", "febd_pre_window")
 		#hw_trigger_config["febd_post_window"] = configParser.getint("hw_trigger", "febd_post_window")
 		
 		hw_trigger_config["single_acceptance_period"] = configParser.getint("hw_trigger", "single_acceptance_period")
@@ -154,22 +150,22 @@ class Config:
 
 
 	def loadToHardware(self, daqd, bias_enable=APPLY_BIAS_OFF, hw_trigger_enable=False, qdc_mode = "qdc"):
-		#
 		# Apply bias voltage settings
-		# 
 		hvdacHwConfig = daqd.get_hvdac_config()
 		if bias_enable == APPLY_BIAS_PREBD or bias_enable == APPLY_BIAS_ON:
 			assert (self.__loadMask & LOAD_BIAS_CALIBRATION) != 0
 			assert (self.__loadMask & LOAD_BIAS_SETTINGS) != 0
+
 			for portID, slaveID in daqd.getActiveFEBDs(): 
 				fe_power.set_bias_power(daqd, portID, slaveID, 'on')
+
 			for key in list(self.__biasChannelSettingsTable.keys()):
 				offset, prebd, bd, over = self.getBiasChannelDefaultSettings(key)
 				if bias_enable == APPLY_BIAS_PREBD:
 					Vset = offset + prebd
 				else:
 					Vset = offset + bd + over
-				
+
 				dacSet = self.mapBiasChannelVoltageToDAC(key, Vset)
 				hvdacHwConfig[key] = dacSet
 			daqd.set_hvdac_config(hvdacHwConfig)
@@ -178,7 +174,7 @@ class Config:
 				fe_power.set_bias_power(daqd, portID, slaveID, 'off')
 		else:
 			raise Exception('Unknown value for bias_enable')
-				
+
 		asicsConfig = daqd.getAsicsConfig()
 
 		# Apply ASIC parameters from file
@@ -221,7 +217,6 @@ class Config:
 					channel_qdc_mode = "qdc"
 				else:
 					channel_qdc_mode =  self.getAsicChannelQDCMode((portID, slaveID, chipID, channelID))
-							       
 				if channel_qdc_mode == "tot":
 					cc.setValue("qdc_mode", 0)
 					cc.setValue("intg_en", 0)
@@ -237,17 +232,17 @@ class Config:
 			if daqd.getTriggerUnit() is not None:
 				# Trigger setup
 				portID, slaveID = daqd.getTriggerUnit()
-				daqd.write_config_register(portID, slaveID, 1, 0x0602, 0b1)				
+				daqd.write_config_register(portID, slaveID, 1, 0x0602, 0b1)
 				daqd.write_config_register(portID, slaveID, 3, 0x0606, self.__hw_trigger["coincidence_window"])
 				daqd.write_config_register(portID, slaveID, 2, 0x0608, self.__hw_trigger["pre_window"])
 				daqd.write_config_register(portID, slaveID, 4, 0x060A, self.__hw_trigger["post_window"])
-
 				daqd.write_config_register(portID, slaveID, 32, 0x060C, self.__hw_trigger["single_acceptance_length"] << 16 | self.__hw_trigger["single_acceptance_period"] )
 
 				hw_trigger_regions = self.__hw_trigger["regions"]
 				nRegions = daqd.read_config_register(portID, slaveID, 16, 0x0600)
 				bytes_per_region = int(math.ceil(nRegions / 8.0))
 				bits_per_region = 8 * bytes_per_region
+
 				for r1 in range(nRegions):
 					region_mask = bitarray.bitarray([ 0 for n in range(bits_per_region) ], endian="little")
 					for r2 in range(nRegions):
@@ -255,9 +250,8 @@ class Config:
 							region_mask[r2] = 1
 
 					region_data = region_mask.tobytes()
-
 					daqd.write_mem_ctrl(portID, slaveID, 6, 8, r1 * bytes_per_region, region_data)
-					
+
 			enable = 0b1
 			calibration_enable = 0b1
 			accumulator_on = 0b1
@@ -265,9 +259,9 @@ class Config:
 			nHits_threshold_enable = 0b1
 			febd_tgr_enable = 0b1
 			setupWord = enable | (calibration_enable << 1) | (accumulator_on << 4) | (energy_threshold_enable << 8) | (nHits_threshold_enable << 9) | (febd_tgr_enable << 10)
-        
-			energy_sum_vector = 0b000001111100000 #Sum energies within -2 to 2 clocks
-			hits_sum_vector =  0b000001111100000  #Find multiple events within -2 to 2 clocks
+
+			energy_sum_vector = 0b000001111100000 # Sum energies within -2 to 2 clocks
+			hits_sum_vector =  0b000001111100000  # Find multiple events within -2 to 2 clocks
 			referenceVectors = energy_sum_vector | ( hits_sum_vector << 16 )
 
 			# FEB/D setup
@@ -287,60 +281,98 @@ class Config:
 						address = tacID & 0b11
 						address |= (channelID & 0x3F) << 2
 						address |= chipID  << 8
-
 						try:
-								c0, c1, c2, k0 = self.getAsicTacQDCEmpiricalCalibrationTable((portID, slaveID, chipID, channelID, tacID))
+							c0, c1, c2, k0 = self.getAsicTacQDCEmpiricalCalibrationTable((portID, slaveID, chipID, channelID, tacID))
 						except:
-								c0, c1, c2, k0 = (0,0,0,0)
-                                                                
+							c0, c1, c2, k0 = (0,0,0,0)
+
 						c0_fixedPoint = self.getFixedPointBinaryCalibrationValue(c0, 10, 6)
 						c1_fixedPoint = self.getFixedPointBinaryCalibrationValue(c1, 10, -1)
 						c2_fixedPoint = self.getFixedPointBinaryCalibrationValue(c2, 9, -8, True)
 						k0_fixedPoint = self.getFixedPointBinaryCalibrationValue(k0, 6, 1)
 
 						data = (k0_fixedPoint << 30) | (c2_fixedPoint << 20) | (c1_fixedPoint << 10) | c0_fixedPoint
-
 						data_bitarray = bitarray.bitarray(map(int, bin(data)[2:]), endian = "little")
 						num_zeros = 40 - len(data_bitarray)
 						leading_zeros = bitarray.bitarray('0' * num_zeros)
 						data2_bitarray = (leading_zeros + data_bitarray)
 						data2 = data2_bitarray.tobytes()
 						reversed_data = data2[::-1]
-                                                
 						daqd.write_mem_ctrl2(portID, slaveID, 7, 40, address, reversed_data)	
 		return None
+
 	
 	def getFixedPointBinaryCalibrationValue(self, value, nBits, msb, isSigned = False):
+		"""
+		Convert a floating point value to a fixed point representation with the specified number of bits and most significant bit position.
+		Args:
+			value (float): The floating point value to convert.
+			nBits (int): The number of bits in the fixed point representation.
+			msb (int): The position of the most significant bit.
+			isSigned (bool): Whether the value is signed.
+		Returns:
+			int: The fixed point representation of the value.
+		"""
 		sign = 0
 		if isSigned and (value < 0):
 			sign = 1
 		decBits = nBits-msb-1
 		value = abs(value)
-
 		intPart = int(value)
 		decPart = int((value % 1) * 2**(decBits))
 		fixedPointRep = (intPart << decBits) | decPart
 		result = self.twos_complement( fixedPointRep) if sign == 1 else fixedPointRep
-		
 		return result
 
+
 	def float_to_u7_5(self, f):
+		"""
+		Convert a floating point number to a 7.5 fixed-point representation.
+		Args: f (float): The floating point number to convert.
+		Returns: int: The 7.5 fixed-point representation of the number.
+		"""
 		f = max(0, min(f, 127.96875))
 		integer_part = int(f)
 		fractional_part = int((f - integer_part) * 32)
 		u7_5 = (integer_part << 5) | fractional_part
 		return u7_5
-        
+
+
 	def twos_complement(self, value):
+		"""
+		Compute the two's complement of an integer value.
+		Args: value (int): The integer value to compute the two's complement of.
+		Returns: int: The two's complement of the integer value.
+		"""
 		return (value ^ ((1 << 10) - 1)) + 1
 
+
 	def getCalibratedBiasChannels(self):
+		"""
+		Get a list of calibrated bias channels.
+		Returns: list: A list of calibrated bias channels.
+		"""
 		return list(self.__biasChannelCalibrationTable.keys())
-	
+
+
 	def getBiasChannelDefaultSettings(self, key):
+		"""
+		Get the default settings for a bias channel.
+		Args: key (tuple): The key identifying the bias channel.
+		Returns: tuple: A tuple containing the default settings for the bias channel.
+		"""
 		return self.__biasChannelSettingsTable[key]
-		
+
+
 	def mapBiasChannelVoltageToDAC(self, key, voltage):
+		"""
+		Map a bias channel voltage to a DAC value using linear interpolation on the closest neighbors.
+		Args: 
+			key (tuple): The key identifying the bias channel.
+			voltage (float): The bias channel voltage to map.
+		Returns: 
+			int: The corresponding DAC value.
+		"""
 		# Linear interpolation on closest neighbours
 		y = voltage
 		xy_ = self.__biasChannelCalibrationTable[key]
@@ -354,29 +386,72 @@ class Config:
 		b = y1 - m*x1
 		x = (y-b)/m
 		return int(round(x))
-		
+
+
 	def getCalibratedDiscChannels(self):
+		"""
+		Get a list of calibrated discriminator channels.
+		Returns: list: A list of calibrated discriminator channels.
+		"""
 		return list(self.__asicChannelBaselineSettingsTable.keys())
 	
 	def getAsicChannelDefaultBaselineSettings(self, key):
+		"""
+		Get the default baseline settings for an ASIC channel.
+		Args: key (tuple): The key identifying the ASIC channel.
+		Returns: tuple: A tuple containing the default baseline settings for the ASIC channel.
+		"""
 		return self.__asicChannelBaselineSettingsTable[key]
-		
+
+
 	def getAsicChannelDefaultThresholds(self, key):
+		"""
+		Get the default threshold settings for an ASIC channel.
+		Args: key (tuple): The key identifying the ASIC channel.
+		Returns: tuple: A tuple containing the default threshold settings for the ASIC channel.
+		"""
 		return self.__asicChannelThresholdSettingsTable[key]
-	
+
+
 	def getAsicChannelQDCMode(self, key):
+		"""
+		Get the QDC mode for an ASIC channel.
+		Args: key (tuple): The key identifying the ASIC channel.
+		Returns: str: The QDC mode for the ASIC channel.
+		"""
 		return self.__asicChannelQDCModeTable[key]
 
+
 	def getAsicTacQDCEmpiricalCalibrationTable(self, key):
-		return self.__asicTacQDCEmpiricalCalibrationTable[key]	
-			
+		"""
+		Get the empirical calibration table for an ASIC TAC QDC.
+		Args: key (tuple): The key identifying the ASIC TAC QDC.
+		Returns: tuple: A tuple containing the empirical calibration values for the ASIC TAC QDC.
+		"""
+		return self.__asicTacQDCEmpiricalCalibrationTable[key]
+
+
 	def mapAsicChannelThresholdToDAC(self, key, vth_str, value):
+		"""
+		Map an ASIC channel threshold to a DAC value using the calibration table.
+		Args: 
+			key (tuple): The key identifying the ASIC channel.
+			vth_str (str): The threshold type ("vth_t1", "vth_t2", or "vth_e").
+			value (int): The threshold value to map.
+		Returns:
+			int: The corresponding DAC value.
+		"""
 		vth_t1, vth_t2, vth_e = self.__asicChannelThresholdCalibrationTable[key]
-		tmp = { "vth_t1" : vth_t1, "vth_t2" : vth_t2, "vth_e" : vth_e }
-		return int( tmp[vth_str] - value)
-		
+		tmp = {"vth_t1":vth_t1, "vth_t2":vth_t2, "vth_e":vth_e}
+		return int(tmp[vth_str] - value)
+
 
 def toInt(s):
+	"""
+	Convert a string to an integer, supporting decimal, hexadecimal (0x), and binary (0b) formats.
+	Args: s (str): The string to convert.
+	Returns: int: The integer representation of the string.
+	"""
 	s = s.upper()
 	if s[0:2] == "0X":
 		return int(s[2:], base=16)
@@ -385,10 +460,15 @@ def toInt(s):
 	else:
 		return int(s)
 
+
 def parseAsicParameters(configParser):
+	"""
+	Parse ASIC parameters from the configuration parser.
+	Args: configParser (configparser.ConfigParser): The configuration parser.
+	Returns: dict: A dictionary containing the parsed ASIC parameters.
+	"""
 	if not configParser.has_section("asic_parameters"):
 		return {}
-	
 	t = {}
 	gk = set(tofpet2b.AsicGlobalConfig().getKeys() + tofpet2c.AsicGlobalConfig().getKeys())
 	ck = set(tofpet2b.AsicChannelConfig().getKeys() + tofpet2c.AsicChannelConfig().getKeys())
@@ -414,6 +494,11 @@ def parseAsicParameters(configParser):
 
 
 def normalizeAndSplit(l):
+	"""
+	Normalize a line of text by removing comments, leading/trailing whitespace, and normalizing whitespace to tabs.
+	Args: l (str): The line of text to normalize.
+	Returns: list: A list of strings obtained by splitting the normalized line on tabs.
+	"""
 	l = re.sub(r"\s*#.*", "", l)	# Remove comments
 	l = re.sub(r"^\s*", '', l)	# Remove leading white space
 	l = re.sub(r"\s*$", '', l)	# Remove trailing whitespace
@@ -423,7 +508,14 @@ def normalizeAndSplit(l):
 	l = l.split('\t')
 	return l
 
+
 def readBiasCalibrationTable_tripplet_list(fn):
+	"""
+	Read a bias calibration table from a file and return a dictionary mapping (portID, slaveID, channelID, slotID)
+	to a list of (dac_set, v_meas, adc_meas) triplets.
+	Args: fn (str): The filename of the bias calibration table.
+	Returns: dict: A dictionary mapping (portID, slaveID, channelID, slotID) to a list of (dac_set, v_meas, adc_meas) triplets.
+	"""
 	f = open(fn)
 	c = {}
 	for l in f:
@@ -436,12 +528,18 @@ def readBiasCalibrationTable_tripplet_list(fn):
 		dac_set = int(l[4])
 		v_meas = float(l[5])
 		adc_meas = int(l[6])
-		
 		c[key].append((dac_set, v_meas, adc_meas))
-	return c
 	f.close()
+	return c
+
 
 def readBiasCalibrationTable_table(fn):
+	"""
+	Read a bias calibration table from a file and return a dictionary mapping (portID, slaveID, slotID, channelID)
+	to a list of (dac_set, v_meas, adc_meas) triplets.
+	Args: fn (str): The filename of the bias calibration table.
+	Returns: dict: A dictionary mapping (portID, slaveID, slotID, channelID) to a list of (dac_set, v_meas, adc_meas) triplets.
+	"""
 	f = open(fn)
 	c = {}
 	x = []
@@ -460,7 +558,14 @@ def readBiasCalibrationTable_table(fn):
 	f.close()
 	return c
 
+
 def readSiPMBiasTable(fn):
+	"""
+	Read a SiPM bias table from a file and return a dictionary mapping (portID, slaveID, slotID, channelID)
+	to a list of (offset, prebd, bd, over) values.
+	Args: fn (str): The filename of the SiPM bias table.
+	Returns: dict: A dictionary mapping (portID, slaveID, slotID, channelID) to a list of (offset, prebd, bd, over) values.
+	"""
 	f = open(fn)
 	c = {}
 	for l in f:
@@ -471,7 +576,15 @@ def readSiPMBiasTable(fn):
 	f.close()
 	return c
 
+
 def readDiscCalibrationsTable(fn):
+	"""
+	Read a discriminator calibration table from a file and return two dictionaries:
+	1. A dictionary mapping (portID, slaveID, chipID, channelID) to a list of (baseline_t, baseline_e) values.
+	2. A dictionary mapping (portID, slaveID, chipID, channelID) to a list of (vth_t1, vth_t2, vth_e) values.
+	Args: fn (str): The filename of the discriminator calibration table.
+	Returns: tuple: Two dictionaries as described above.
+	"""
 	f = open(fn)
 	c_b = {}
 	c_t = {}
@@ -484,7 +597,14 @@ def readDiscCalibrationsTable(fn):
 	f.close()
 	return c_b, c_t
 
+
 def readDiscSettingsTable(fn):
+	"""
+	Read a discriminator settings table from a file and return a dictionary mapping (portID, slaveID, chipID, channelID)
+	to a list of (vth_t1, vth_t2, vth_e) values.
+	Args: fn (str): The filename of the discriminator settings table.
+	Returns: dict: A dictionary mapping (portID, slaveID, chipID, channelID) to a list of (vth_t1, vth_t2, vth_e) values.
+	"""
 	f = open(fn)
 	c = {}
 	for l in f:
@@ -495,7 +615,14 @@ def readDiscSettingsTable(fn):
 	f.close()
 	return c
 
+
 def readQDCModeTable(fn):
+	"""
+	Read a QDC mode table from a file and return a dictionary mapping (portID, slaveID, chipID, channelID)
+	to a string indicating the QDC mode ("tot" or "qdc").
+	Args: fn (str): The filename of the QDC mode table.
+	Returns: dict: A dictionary mapping (portID, slaveID, chipID, channelID) to a string indicating the QDC mode ("tot" or "qdc").
+	"""
 	f = open(fn)
 	c = {}
 	ln = 0
@@ -513,6 +640,11 @@ def readQDCModeTable(fn):
 
 
 def readTriggerMap(fn):
+	"""
+	Read a trigger map from a file and return a set of tuples representing the trigger regions.
+	Args: fn (str): The filename of the trigger map.
+	Returns: set: A set of tuples representing the trigger regions.
+	"""
 	f = open(fn)
 	triggerMap = set()
 	ln = 0
@@ -526,7 +658,6 @@ def readTriggerMap(fn):
 		if c not in ['M', 'C']:
 			print("Error in '%s' line %d: type must be 'M' or 'C'\n" % (fn, ln))
 			exit(1)
-
 		if c == 'C':
 			triggerMap.add((r1, r2))
 	f.close()
@@ -534,6 +665,12 @@ def readTriggerMap(fn):
 
 
 def readTopologyMap(fn):
+	"""
+	Read a topology map from a file and return a dictionary mapping (portID, slaveID, chipID)
+	to a list of (topology) values.
+	Args: fn (str): The filename of the topology map.
+	Returns: dict: A dictionary mapping (portID, slaveID, chipID) to a list of (topology) values.
+	"""
 	f = open(fn)
 	c = {}
 	for l in f:
@@ -541,11 +678,17 @@ def readTopologyMap(fn):
 		if l == ['']: continue
 		portID, slaveID, chipID = [ int(v) for v in l[0:3] ]
 		c[(portID, slaveID, chipID)] = [ v for v in l[3:4] ]
-	
 	f.close()
 	return c
 
+
 def readQDCEmpiricalCalibrationTable(fn):
+	"""
+	Read a QDC empirical calibration table from a file and return a dictionary mapping (portID, slaveID, chipID, channelID, tacID)
+	to a list of (c0, c1, c2, k0) values.
+	Args: fn (str): The filename of the QDC empirical calibration table.
+	Returns: dict: A dictionary mapping (portID, slaveID, chipID, channelID, tacID) to a list of (c0, c1, c2, k0) values.
+	"""
 	f = open(fn)
 	c = {}
 	for l in f:
@@ -556,7 +699,14 @@ def readQDCEmpiricalCalibrationTable(fn):
 	f.close()
 	return c
 
+
 def makeSimpleEmpiricalCalibrationTable(fn):
+	"""
+	Create a simple empirical calibration table from a discriminator settings table file and return a dictionary mapping 
+	(portID, slaveID, chipID, channelID, tacID) to a list of (c0, c1, c2, k0) values.
+	Args: fn (str): The filename of the discriminator settings table.
+	Returns: dict: A dictionary mapping (portID, slaveID, chipID, channelID, tacID) to a list of (c0, c1, c2, k0) values.
+	"""
 	f = open(fn)
 	c = {}
 	for l in f:
@@ -570,6 +720,11 @@ def makeSimpleEmpiricalCalibrationTable(fn):
 
 
 def hwTriggerParamsAreDefault(hw_trigger_config):
+	"""
+	Check if the hardware trigger parameters are set to their default values.
+	Args: hw_trigger_config (dict): A dictionary containing the hardware trigger parameters.
+	Returns: bool: True if the hardware trigger parameters are set to their default values, False otherwise.
+	"""
 	isDefault = True
 	if hw_trigger_config["group_min_energy"] > 0 or hw_trigger_config["group_max_energy"] < 128:
 		isDefault = False 
