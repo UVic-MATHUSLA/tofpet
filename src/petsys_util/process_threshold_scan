@@ -1,0 +1,115 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+from copy import deepcopy
+import argparse
+import re
+import uproot
+import scipy
+import numpy as np
+import matplotlib as plt
+
+channelIDs = np.arange(0, 64, 1)
+timeInt = 0.1
+t1TargetRate = 100e3
+t1TargetNPE = 0.5       # target number of photoelectrons to cut on
+t2TargetRate = 10e3
+t2TargetNPE = 1.5       # actually 2.0, because up to 0.5 is already cut out by the t1 values
+eTargetRate = 1e3
+eTargetNPE = 2.5        # actually 4.5, because up to 2.0 is already cut
+
+
+def normalize(l):
+    l = re.sub(r"\s*#.*", "", l)	# Remove comments
+    l = re.sub(r"^\s*", '', l)	# Remove leading white space
+    l = re.sub(r"\s*$", '', l)	# Remove trailing whitespace
+    l = re.sub(r"\s+", '\t', l)	# Normalize whitespace to tabs
+    l = re.sub('\r', '', l)		# Remove \r
+    l = re.sub('\n', '', l)		# Remove \l
+    return l
+
+
+def set_thresholds(data, steps, target_npe, target_rate, param, colours):
+    for ch in channelIDs: 
+        energies = {st: [] for st in steps}
+        for step in steps:
+            step_e = data[(data.step1 == step) & (data.channelID == ch)].energy
+            energies[step].append(step_e)
+        hits = []
+        for st in steps:
+            hits.append(len(energies[st][0]))
+
+        rate = np.array(hits)/timeInt
+        error = np.sqrt(hits)/timeInt
+        trigger_rate = np.array(rate)
+        trigger_rate[trigger_rate <= 0] = 1e-10
+        trigger_rate_diff = -scipy.ndimage.gaussian_filter(np.log10(trigger_rate), sigma=1.2, order=1) # smoothes the function
+        trigger_rate_curve = scipy.interpolate.interp1d(steps, trigger_rate_diff, kind="quadratic")
+        thresholds_interp = np.linspace(steps[0], steps[-1], 512)
+        rate_inter = trigger_rate_curve(thresholds_interp) # finds the value of points in the function that aren't in the array
+
+        peaks, prop = scipy.signal.find_peaks(rate_inter, height=0.1, prominence=0.001) # finds the steps
+        if len(peaks) < int(target_npe) or len(peaks) == int(target_npe): 
+            # if the peaks aren't clear, set it to the minimum (then will have to check what threshold it should be)
+            baseline = min(steps)
+            centred = min(steps)
+        else: 
+            baseline = int(thresholds_interp[peaks[int(target_npe)]]) # finds the end of the target npe peak
+            centred = int(baseline) - 2 # roughly centres it
+
+        thresholds = []
+        thresholds.append(int(centred))
+        fig, ax = plt.subplots()
+        ax.errorbar(steps, rate, yerr = error, color = colours[0], fmt = 'o', ecolor = colours[0], barsabove = False)
+        ax.set_yscale('log')
+        ax.set_ylabel('Rate')
+        ax.set_xlabel(f'{param} Threshold')
+        ax.set_title(f'Channel {ch} {param} Scan')
+        ax.axvline(centred, colours[1], label = f'Optimal Threshold: {centred}')
+        ax.axvline(target_rate, colours[2], label = f'Target Rate: {target_rate}')
+        ax.grid(color = 'whitesmoke', linestyle = '--')
+        ax.legend()
+        plt.savefig(f'ch{ch}_{param}_scan.png', dpi=300, bbox_inches='tight')
+    return thresholds
+
+
+def main():
+    parser = argparse.ArgumentParser(description='Process a threshold scan, generate plots per channel')
+    parser.add_argument("--config", type=str, required=True, help="Configuration file")
+    parser.add_argument("-i", type=str, dest="inputRootFile", required=True, help="Input root file prefix")
+    parser.add_argument("-p", type=str, dest="parameterScanFile", required=True, help="Parameter scan file used")
+    parser.add_argument("-o", type=str, dest="outputFilePrefix", required=True, help="Output file prefix")
+    args = parser.parse_args()
+
+    inputScanFile = open(args.parameterScanFile + ".txt")
+    scanSteps = []
+    for i, line in enumerate(inputScanFile):
+        line = normalize(line)
+        if i == 0:
+            scanParam = str(line)
+        else:
+            scanSteps.append(int(line))
+    inputScanFile.close()
+
+    scanFile = uproot.open(args.inputRootFile + '.root')
+    scanData = scanFile['data'].arrays(['step1', 'energy', 'channelID'])
+    t1Colours = ["darkolivegreen", "darkseagreen", "khaki"]
+    t2Colours = ["teal", "cadetblue", "lightblue"]
+    eColours = ["mediumvioletred", "lightcoral", "lightpink"]
+
+    if scanParam == "vth_t1":
+        vth_t1s = set_thresholds(scanData, scanSteps, t1TargetNPE, "vth_t1", t1Colours)
+    elif scanParam == "vth_t2":
+        vth_t2s = set_thresholds(scanData, scanSteps, t2TargetNPE, "vth_t2", t2Colours)
+    elif scanParam == "vth_e":
+        vth_es = set_thresholds(scanData, scanSteps, eTargetNPE, "vth_e", eColours)
+    # elif scanParam == "OV":
+    #     set_thresholds(scanData, scanSteps)
+    # elif scanParam == "lsb_t1":
+    #     set_thresholds(scanData, scanSteps)
+    else:
+        print("Invalid parameter to scan, idk how you even made this file with petsys")
+
+
+if __name__ == '__main__':
+    main()
