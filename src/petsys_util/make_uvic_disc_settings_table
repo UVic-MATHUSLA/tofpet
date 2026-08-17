@@ -12,7 +12,7 @@ parser.add_argument("-i", type=str, dest="inputFilePrefix", required=True, help=
 parser.add_argument("-o", type=str, dest="outputFilePrefix", required=True, help="Output file prefix")
 args = parser.parse_args()
 config = config.ConfigFromFile(args.config, loadMask=config.LOAD_DISC_CALIBRATION)
-    
+
 activeChannels = set()
 inputFile = open(args.inputFilePrefix + ".tsv")
 for line in inputFile:
@@ -24,19 +24,11 @@ for line in inputFile:
     line = re.sub('\n', '', line)		# Remove \l
     line = line.split('\t')
     if line == ['']: continue
-    for i, v in enumerate(line):
-        if   i == 0: portID = int(v)
-        elif i == 1: slaveID = int(v)
-        elif i == 2: chipID = int(v)
-        elif i == 3: channelID = int(v)
-        elif i == 4: baseline_T = float(v)
-        elif i == 5: baseline_E = float(v)
-        elif i == 6: zero_T1 = float(v)
-        elif i == 7: zero_T2 = float(v)
-        elif i == 8: zero_E = float(v)
-        elif i == 9: noise_T1 = float(v)
-        elif i == 10: noise_T2 = float(v)
-        elif i == 11: noise_E = float(v)
+    for v in line:
+        portID, slaveID, chipID, channelID = [int(v) for v in line[0:4]]
+        baseline_T, baseline_E = [float(v) for v in line [4:6]]
+        zero_T1, zero_T2, zero_E = [float(v) for v in line [6:9]]
+        noise_T1, noise_T2, noise_E = [float(v) for v in line [9:12]]
     activeChannels.add((portID, slaveID, chipID, channelID, baseline_T, baseline_E, zero_T1, zero_T2, zero_E, noise_T1, noise_T2, noise_E))
 inputFile.close()
 
