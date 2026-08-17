@@ -6,7 +6,7 @@ import re
 import uproot
 import scipy
 import numpy as np
-import matplotlib as plt
+import matplotlib.pyplot as plt
 
 channelIDs = np.arange(0, 64, 1)
 timeInt = 0.1
@@ -89,7 +89,7 @@ def main():
     for step in scanSteps:
         hitsPerStep.append(activeSteps.count(step))
 
-    print(f"Processing {scanParam} scan through: {scanSteps}") 
+    print(f"Processing scan: {scanParam} = {scanSteps}") 
     print(scanFile["data"])
 
     t1Colours = ["darkolivegreen", "darkseagreen", "khaki"]
