@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from copy import deepcopy
 import argparse
 import re
 import uproot
@@ -32,10 +31,12 @@ def normalize(l):
 def set_thresholds(data, steps, target_npe, target_rate, param, colours):
     thresholds = []
     for ch in channelIDs: 
+
         energies = {st: [] for st in steps}
         for step in steps:
-            step_e = data[(data.step1==step) & (data.channelID == ch)].energy
+            step_e = data[(data['step1']==step) & (data['channelID'] == ch)]['energy']
             energies[step].append(step_e)
+
         hits = []
         for step in steps:
             hits.append(len(energies[step][0]))
@@ -91,7 +92,7 @@ def main():
 
     scanFile = uproot.open(args.inputRootFile + ".root")
     scanData = scanFile["data"].arrays(['step1', 'energy', 'channelID'], library="np")
-    print(f"Processing {scanParam} scan with {len(scanSteps)} steps: {scanSteps}") 
+    print(f"Processing {scanParam} scan with {len(scanSteps)} steps") 
     print(scanData)
     t1Colours = ["darkolivegreen", "darkseagreen", "khaki"]
     t2Colours = ["teal", "cadetblue", "lightblue"]
