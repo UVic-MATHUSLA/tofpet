@@ -30,14 +30,15 @@ def normalize(l):
 
 
 def set_thresholds(data, steps, target_npe, target_rate, param, colours):
+    thresholds = []
     for ch in channelIDs: 
         energies = {st: [] for st in steps}
         for step in steps:
-            step_e = data[(data.step1 == step) & (data.channelID == ch)].energy
+            step_e = data.loc[(data['step1'] == step) & (data['channelID'] == ch), 'energy'].to_numpy()
             energies[step].append(step_e)
         hits = []
-        for st in steps:
-            hits.append(len(energies[st][0]))
+        for step in steps:
+            hits.append(len(energies[step][0]))
 
         rate = np.array(hits)/timeInt
         error = np.sqrt(hits)/timeInt
@@ -57,7 +58,6 @@ def set_thresholds(data, steps, target_npe, target_rate, param, colours):
             baseline = int(thresholds_interp[peaks[int(target_npe)]]) # finds the end of the target npe peak
             centred = int(baseline) - 2 # roughly centres it
 
-        thresholds = []
         thresholds.append(int(centred))
         fig, ax = plt.subplots()
         ax.errorbar(steps, rate, yerr = error, color = colours[0], fmt = 'o', ecolor = colours[0], barsabove = False)
@@ -89,8 +89,7 @@ def main():
             scanSteps.append(int(line))
     inputScanFile.close()
 
-    scanFile = ROOT.RDataFrame("data", args.inputRootFile + ".root") 
-    scanData = scanFile.AsNumpy(['step1', 'energy', 'channelID'])
+    scanData = ROOT.RDataFrame("data", args.inputRootFile + ".root") 
     t1Colours = ["darkolivegreen", "darkseagreen", "khaki"]
     t2Colours = ["teal", "cadetblue", "lightblue"]
     eColours = ["mediumvioletred", "lightcoral", "lightpink"]
