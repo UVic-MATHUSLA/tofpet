@@ -19,38 +19,32 @@ eTargetNPE = 2.5        # actually 4.5, because up to 2.0 is already cut
 
 
 def normalize(l):
-    l = re.sub(r"\s*#.*", "", l)	# Remove comments
-    l = re.sub(r"^\s*", '', l)	# Remove leading white space
-    l = re.sub(r"\s*$", '', l)	# Remove trailing whitespace
-    l = re.sub(r"\s+", '\t', l)	# Normalize whitespace to tabs
-    l = re.sub('\r', '', l)		# Remove \r
-    l = re.sub('\n', '', l)		# Remove \l
+    l = re.sub(r"\s*#.*", "", l)# Remove comments
+    l = re.sub(r"^\s*", '', l)  # Remove leading white space
+    l = re.sub(r"\s*$", '', l)  # Remove trailing whitespace
+    l = re.sub(r"\s+", '\t', l) # Normalize whitespace to tabs
+    l = re.sub('\r', '', l)     # Remove \r
+    l = re.sub('\n', '', l)     # Remove \n
     return l
 
 
 def set_thresholds(data, steps, target_npe, target_rate, param, colours):
     thresholds = []
     for ch in channelIDs: 
+        energies = {st: data[data.step1 == st]['energy'].tolist() for st in steps}
+        hits = [len(energies[st]) for st in steps]
 
-        energies = {st: [] for st in steps}
-        for step in steps:
-            step_e = data[(data['step1'][step]==step) & (data['channelID'][ch]==ch)]['energy']
-            energies[step].append(step_e)
+        rate = np.array(hits)/timeInt           # calculate the rate of hits per step
+        error = np.sqrt(hits)/timeInt           # calculate the error on the rate of hits per step
+        trigger_rate = np.array(rate)           # calculate the trigger rate of hits per step (for smoothing)
+        trigger_rate[trigger_rate <= 0] = 1e-10 # to avoid log10(0) errors
 
-        hits = []
-        for step in steps:
-            hits.append(len(energies[step][0]))
+        trigger_rate_diff = -scipy.ndimage.gaussian_filter(np.log10(trigger_rate), sigma=1.2, order=1)  # smoothes the function
+        trigger_rate_curve = scipy.interpolate.interp1d(steps, trigger_rate_diff, kind="quadratic")     # creates a function that can be used to find the value of points in the function that aren't in the array
+        thresholds_interp = np.linspace(steps[0], steps[-1], 512)                                       # creates an array of 512 points between the first and last step
+        rate_inter = trigger_rate_curve(thresholds_interp)                                              # finds the value of points in the function that aren't in the array
 
-        rate = np.array(hits)/timeInt
-        error = np.sqrt(hits)/timeInt
-        trigger_rate = np.array(rate)
-        trigger_rate[trigger_rate <= 0] = 1e-10
-        trigger_rate_diff = -scipy.ndimage.gaussian_filter(np.log10(trigger_rate), sigma=1.2, order=1) # smoothes the function
-        trigger_rate_curve = scipy.interpolate.interp1d(steps, trigger_rate_diff, kind="quadratic")
-        thresholds_interp = np.linspace(steps[0], steps[-1], 512)
-        rate_inter = trigger_rate_curve(thresholds_interp) # finds the value of points in the function that aren't in the array
-
-        peaks, prop = scipy.signal.find_peaks(rate_inter, height=0.1, prominence=0.001) # finds the steps
+        peaks, prop = scipy.signal.find_peaks(rate_inter, height=0.1, prominence=0.001)                 # finds the steps
         if len(peaks) < int(target_npe) or len(peaks) == int(target_npe): 
             # if the peaks aren't clear, set it to the minimum (then will have to check what threshold it should be)
             baseline = min(steps)
