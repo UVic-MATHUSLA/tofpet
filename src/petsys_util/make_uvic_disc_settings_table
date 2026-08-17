@@ -47,9 +47,9 @@ outputFile = open(args.outputFilePrefix + "_var.tsv", "w")
 outputFile.write("#portID\tslaveID\tchipID\tchannelID\tvth_t1\tvth_t2\tvth_e\n")
 
 for portID, slaveID, chipID, channelID, baseline_T, baseline_E, zero_T1, zero_T2, zero_E, noise_T1, noise_T2, noise_E in activeChannels:
-    vth_t1 = config.mapAsicChannelThresholdToDAC((portID, slaveID, chipID, channelID), "vth_t1", zero_T1 + 3*noise_T1)
-    vth_t2 = config.mapAsicChannelThresholdToDAC((portID, slaveID, chipID, channelID), "vth_t2", zero_T2 + 4*noise_T2)
-    vth_e = config.mapAsicChannelThresholdToDAC((portID, slaveID, chipID, channelID), "vth_e", zero_E + 5*noise_E)
+    vth_t1 = baseline_T - (zero_T1 + 3*noise_T1)
+    vth_t2 = baseline_T - (zero_T2 + 4*noise_T2)
+    vth_e = baseline_E - (zero_E + 5*noise_E)
     outputFile.write("%d\t%d\t%d\t%d\t%f\t%f\t%f\n" % (portID, slaveID, chipID, channelID, vth_t1, vth_t2, vth_e))
 
 outputFile.close()
