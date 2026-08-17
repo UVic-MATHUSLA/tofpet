@@ -89,7 +89,9 @@ def main():
             scanSteps.append(int(line))
     inputScanFile.close()
 
-    scanData = ROOT.RDataFrame("data", args.inputRootFile + ".root") 
+    scanData = ROOT.RDataFrame("data", args.inputRootFile + ".root")
+    print(f"Processing {scanParam} scan with {len(scanSteps)} steps: {scanSteps}") 
+    print(scanData)
     t1Colours = ["darkolivegreen", "darkseagreen", "khaki"]
     t2Colours = ["teal", "cadetblue", "lightblue"]
     eColours = ["mediumvioletred", "lightcoral", "lightpink"]
