@@ -5,6 +5,7 @@ from copy import deepcopy
 import argparse
 import re
 import ROOT
+import uproot
 import scipy
 import numpy as np
 import matplotlib as plt
@@ -34,7 +35,7 @@ def set_thresholds(data, steps, target_npe, target_rate, param, colours):
     for ch in channelIDs: 
         energies = {st: [] for st in steps}
         for step in steps:
-            step_e = data.loc[(data['step1'] == step) & (data['channelID'] == ch), 'energy'].to_numpy()
+            step_e = data[(data.step1==step) & (data.channelID == ch)].energy
             energies[step].append(step_e)
         hits = []
         for step in steps:
@@ -89,7 +90,8 @@ def main():
             scanSteps.append(int(line))
     inputScanFile.close()
 
-    scanData = ROOT.RDataFrame("data", args.inputRootFile + ".root")
+    scanFile = uproot.open(args.inputRootFile + ".root")
+    scanData = scanFile["data"].arrays(['step1', 'energy', 'channelID'], library="np")
     print(f"Processing {scanParam} scan with {len(scanSteps)} steps: {scanSteps}") 
     print(scanData)
     t1Colours = ["darkolivegreen", "darkseagreen", "khaki"]
