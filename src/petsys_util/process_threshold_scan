@@ -29,7 +29,7 @@ def normalize(l):
 
 
 
-def set_thresholds(hits, steps, target_npe, target_rate, param, colours):
+def set_thresholds(hits, steps, target_npe, target_rate, param, colours, outputDirectory):
     thresholds = []
     for ch in channelIDs:
         rate = np.array(hits)/timeInt           # calculate the rate of hits per step
@@ -41,15 +41,14 @@ def set_thresholds(hits, steps, target_npe, target_rate, param, colours):
         trigger_rate_curve = scipy.interpolate.interp1d(steps, trigger_rate_diff, kind="quadratic")     # creates a function that can be used to find the value of points in the function that aren't in the array
         thresholds_interp = np.linspace(steps[0], steps[-1], 512)                                       # creates an array of 512 points between the first and last step
         rate_inter = trigger_rate_curve(thresholds_interp)                                              # finds the value of points in the function that aren't in the array
-
         peaks, prop = scipy.signal.find_peaks(rate_inter, height=0.1, prominence=0.001)                 # finds the steps
-        if len(peaks) < int(target_npe) or len(peaks) == int(target_npe): 
-            # if the peaks aren't clear, set it to the minimum (then will have to check what threshold it should be)
+        # if the peaks aren't clear, set it to the minimum (then will have to check what threshold it should be)
+        if len(peaks) < int(target_npe) or len(peaks) == int(target_npe):
             baseline = min(steps)
             centred = min(steps)
         else: 
-            baseline = int(thresholds_interp[peaks[int(target_npe)]]) # finds the end of the target npe peak
-            centred = int(baseline) - 2 # roughly centres it
+            baseline = int(thresholds_interp[peaks[int(target_npe)]])   # finds the end of the target npe peak
+            centred = int(baseline) - 2                                 # roughly centres it
 
         thresholds.append(int(centred))
         fig, ax = plt.subplots()
@@ -62,7 +61,8 @@ def set_thresholds(hits, steps, target_npe, target_rate, param, colours):
         ax.axhline(y=target_rate, color=colours[2], label = f'Target Rate: {target_rate}')
         ax.grid(color = 'whitesmoke', linestyle = '--')
         ax.legend()
-        plt.savefig(f'ch{ch}_{param}_scan.png', dpi=300, bbox_inches='tight')
+        plt.savefig(f'{outputDirectory}/ch{ch}_{param}_scan.png', dpi=300, bbox_inches='tight')
+        plt.close(fig)
     return thresholds
 
 
@@ -70,6 +70,7 @@ def main():
     parser = argparse.ArgumentParser(description='Process a threshold scan, generate plots per channel')
     parser.add_argument("-i", type=str, dest="inputRootFile", required=True, help="Input root file prefix")
     parser.add_argument("-p", type=str, dest="parameterScanFile", required=True, help="Parameter scan file prefix")
+    parser.add_argument("-o", type=str, dest="outputDirectory", required=True, help="Output directory for plots")
     args = parser.parse_args()
 
     inputScanFile = open(args.parameterScanFile + ".txt")
@@ -85,9 +86,11 @@ def main():
     activeChan = scanFile["data"]["channelID"].array().tolist()
     energies = scanFile["data"]["energy"].array().tolist()
 
-    hitsPerStep = []
-    for step in scanSteps:
-        hitsPerStep.append(activeSteps.count(step))
+    # make 2D array of hits per step per channel: rows = channels (64), columns are steps (len(scanSteps))
+    hitsPerStep = np.zeros((64, len(scanSteps)), dtype=int)
+    for step, chan in zip(activeSteps, activeChan):
+        stepIndex = scanSteps.index(step)
+        hitsPerStep[chan][stepIndex] += 1
 
     print(f"Processing scan: {scanParam} = {scanSteps}") 
     print(scanFile["data"])
@@ -97,11 +100,11 @@ def main():
     eColours = ["mediumvioletred", "lightcoral", "lightpink"]
 
     if scanParam == "vth_t1":
-        vth_t1s = set_thresholds(hitsPerStep, scanSteps, t1TargetNPE, t1TargetRate, "vth_t1", t1Colours)
+        vth_t1s = set_thresholds(hitsPerStep, scanSteps, t1TargetNPE, t1TargetRate, "vth_t1", t1Colours, args.outputDirectory)
     elif scanParam == "vth_t2":
-        vth_t2s = set_thresholds(hitsPerStep, scanSteps, t2TargetNPE, t2TargetRate, "vth_t2", t2Colours)
+        vth_t2s = set_thresholds(hitsPerStep, scanSteps, t2TargetNPE, t2TargetRate, "vth_t2", t2Colours, args.outputDirectory)
     elif scanParam == "vth_e":
-        vth_es = set_thresholds(hitsPerStep, scanSteps, eTargetNPE, eTargetRate, "vth_e", eColours)
+        vth_es = set_thresholds(hitsPerStep, scanSteps, eTargetNPE, eTargetRate, "vth_e", eColours, args.outputDirectory)
     # elif scanParam == "OV":
     #     set_thresholds(scanData, scanSteps)
     # elif scanParam == "lsb_t1":
