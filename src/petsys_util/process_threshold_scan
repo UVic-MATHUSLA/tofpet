@@ -75,10 +75,8 @@ def set_thresholds(data, steps, target_npe, target_rate, param, colours):
 
 def main():
     parser = argparse.ArgumentParser(description='Process a threshold scan, generate plots per channel')
-    parser.add_argument("--config", type=str, required=True, help="Configuration file")
     parser.add_argument("-i", type=str, dest="inputRootFile", required=True, help="Input root file prefix")
     parser.add_argument("-p", type=str, dest="parameterScanFile", required=True, help="Parameter scan file used")
-    parser.add_argument("-o", type=str, dest="outputFilePrefix", required=True, help="Output file prefix")
     args = parser.parse_args()
 
     inputScanFile = open(args.parameterScanFile + ".txt")
