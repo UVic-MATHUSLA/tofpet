@@ -34,7 +34,7 @@ def set_thresholds(data, steps, target_npe, target_rate, param, colours):
 
         energies = {st: [] for st in steps}
         for step in steps:
-            step_e = data[(data['step1']==step) & (data['channelID'] == ch)]['energy']
+            step_e = data[(data['step1'][step]==step) & (data['channelID'][ch]==ch)]['energy']
             energies[step].append(step_e)
 
         hits = []
