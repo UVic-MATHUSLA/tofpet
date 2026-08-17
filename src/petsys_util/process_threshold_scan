@@ -46,7 +46,8 @@ def set_thresholds(hits, steps, target_npe, target_rate, param, colours, outputD
             print(f"Channel {ch}: Not enough peaks found. Setting to minimum.")
             ch_baseline = min(steps)
             ch_centred = min(steps)
-        else: 
+        else:
+            print(f"Channel {ch}: Found {len(ch_peaks)} peaks.")
             ch_baseline = int(ch_thresholds_interp[ch_peaks[int(target_npe)]])  # finds the end of the target npe peak
             ch_centred = int(ch_baseline) - 2                                   # roughly centres it
 
