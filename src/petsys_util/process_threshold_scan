@@ -28,36 +28,36 @@ def normalize(l):
     return l
 
 
-
 def set_thresholds(hits, steps, target_npe, target_rate, param, colours, outputDirectory):
     thresholds = []
     for ch in channelIDs:
-        rate = np.array(hits)/timeInt           # calculate the rate of hits per step
-        error = np.sqrt(hits)/timeInt           # calculate the error on the rate of hits per step
-        trigger_rate = np.array(rate)           # calculate the trigger rate of hits per step (for smoothing)
-        trigger_rate[trigger_rate <= 0] = 1e-10 # to avoid log10(0) errors
+        ch_rate = hits[ch]/timeInt                      # calculate the rate of hits per step
+        ch_err = np.sqrt(hits[ch])/timeInt              # calculate the error on the rate of hits per step
+        ch_trigger_rate = np.array(ch_rate)             # calculate the trigger rate of hits per step (for smoothing)
+        ch_trigger_rate[ch_trigger_rate <= 0] = 1e-10   # to avoid log10(0) errors
 
-        trigger_rate_diff = -scipy.ndimage.gaussian_filter(np.log10(trigger_rate), sigma=1.2, order=1)  # smoothes the function
-        trigger_rate_curve = scipy.interpolate.interp1d(steps, trigger_rate_diff, kind="quadratic")     # creates a function that can be used to find the value of points in the function that aren't in the array
-        thresholds_interp = np.linspace(steps[0], steps[-1], 512)                                       # creates an array of 512 points between the first and last step
-        rate_inter = trigger_rate_curve(thresholds_interp)                                              # finds the value of points in the function that aren't in the array
-        peaks, prop = scipy.signal.find_peaks(rate_inter, height=0.1, prominence=0.001)                 # finds the steps
-        # if the peaks aren't clear, set it to the minimum (then will have to check what threshold it should be)
-        if len(peaks) < int(target_npe) or len(peaks) == int(target_npe):
-            baseline = min(steps)
-            centred = min(steps)
+        ch_trigger_rate_diff = -scipy.ndimage.gaussian_filter(np.log10(ch_trigger_rate), sigma=1.2, order=1)    # smoothes the function
+        ch_trigger_rate_curve = scipy.interpolate.interp1d(steps, ch_trigger_rate_diff, kind="quadratic")       # creates a function that can be used to find the value of points in the function that aren't in the array
+        ch_thresholds_interp = np.linspace(steps[0], steps[-1], 512)                                            # creates an array of 512 points between the first and last step
+        ch_rate_inter = ch_trigger_rate_curve(ch_thresholds_interp)                                             # finds the value of points in the function that aren't in the array
+        ch_peaks, ch_prop = scipy.signal.find_peaks(ch_rate_inter, height=0.1, prominence=0.001)                # finds the steps
+
+        if len(ch_peaks) < int(target_npe) or len(ch_peaks) == int(target_npe):
+            print(f"Channel {ch}: Not enough peaks found. Setting to minimum.")
+            ch_baseline = min(steps)
+            ch_centred = min(steps)
         else: 
-            baseline = int(thresholds_interp[peaks[int(target_npe)]])   # finds the end of the target npe peak
-            centred = int(baseline) - 2                                 # roughly centres it
+            ch_baseline = int(ch_thresholds_interp[ch_peaks[int(target_npe)]])  # finds the end of the target npe peak
+            ch_centred = int(ch_baseline) - 2                                   # roughly centres it
 
-        thresholds.append(int(centred))
+        thresholds.append(int(ch_centred))
         fig, ax = plt.subplots()
-        ax.errorbar(steps, rate, yerr = error, color = colours[0], fmt = 'o', ecolor = colours[0], barsabove = False)
+        ax.errorbar(steps, ch_rate, yerr=ch_err, color=colours[0], fmt='o', ecolor=colours[0], barsabove=False)
         ax.set_yscale('log')
         ax.set_ylabel('Rate')
         ax.set_xlabel(f'{param} Threshold')
         ax.set_title(f'Channel {ch} {param} Scan')
-        ax.axvline(x=centred, color=colours[1], label = f'Optimal Threshold: {centred}')
+        ax.axvline(x=ch_centred, color=colours[1], label = f'Optimal Threshold: {ch_centred}')
         ax.axhline(y=target_rate, color=colours[2], label = f'Target Rate: {target_rate}')
         ax.grid(color = 'whitesmoke', linestyle = '--')
         ax.legend()
