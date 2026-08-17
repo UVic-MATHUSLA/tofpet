@@ -4,7 +4,7 @@
 from copy import deepcopy
 import argparse
 import re
-import uproot
+import ROOT
 import scipy
 import numpy as np
 import matplotlib as plt
@@ -91,8 +91,8 @@ def main():
             scanSteps.append(int(line))
     inputScanFile.close()
 
-    scanFile = uproot.open(args.inputRootFile + '.root')
-    scanData = scanFile['data'].arrays(['step1', 'energy', 'channelID'])
+    scanFile = ROOT.RDataFrame("data", args.inputRootFile + ".root") 
+    scanData = scanFile.AsNumpy(['step1', 'energy', 'channelID'])
     t1Colours = ["darkolivegreen", "darkseagreen", "khaki"]
     t2Colours = ["teal", "cadetblue", "lightblue"]
     eColours = ["mediumvioletred", "lightcoral", "lightpink"]
