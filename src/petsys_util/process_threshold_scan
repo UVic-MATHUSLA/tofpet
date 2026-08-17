@@ -28,12 +28,10 @@ def normalize(l):
     return l
 
 
-def set_thresholds(data, steps, target_npe, target_rate, param, colours):
-    thresholds = []
-    for ch in channelIDs: 
-        energies = {st: data[data.get('step1') == st]['energy'].tolist() for st in steps}
-        hits = [len(energies[st]) for st in steps]
 
+def set_thresholds(hits, steps, target_npe, target_rate, param, colours):
+    thresholds = []
+    for ch in channelIDs:
         rate = np.array(hits)/timeInt           # calculate the rate of hits per step
         error = np.sqrt(hits)/timeInt           # calculate the error on the rate of hits per step
         trigger_rate = np.array(rate)           # calculate the trigger rate of hits per step (for smoothing)
@@ -71,33 +69,39 @@ def set_thresholds(data, steps, target_npe, target_rate, param, colours):
 def main():
     parser = argparse.ArgumentParser(description='Process a threshold scan, generate plots per channel')
     parser.add_argument("-i", type=str, dest="inputRootFile", required=True, help="Input root file prefix")
-    parser.add_argument("-p", type=str, dest="parameterScanFile", required=True, help="Parameter scan file used")
+    parser.add_argument("-p", type=str, dest="parameterScanFile", required=True, help="Parameter scan file prefix")
     args = parser.parse_args()
 
     inputScanFile = open(args.parameterScanFile + ".txt")
     scanSteps = []
     for i, line in enumerate(inputScanFile):
         line = normalize(line)
-        if i == 0:
-            scanParam = str(line)
-        else:
-            scanSteps.append(int(line))
+        if i == 0: scanParam = str(line)
+        else: scanSteps.append(int(line))
     inputScanFile.close()
 
     scanFile = uproot.open(args.inputRootFile + ".root")
-    scanData = scanFile["data"].arrays(['step1', 'energy', 'channelID'], library="np")
-    print(f"Processing {scanParam} scan with {len(scanSteps)} steps") 
-    print(scanData)
+    activeSteps = scanFile["data"]["step1"].array().tolist()
+    activeChan = scanFile["data"]["channel1"].array().tolist()
+    energies = scanFile["data"]["energy1"].array().tolist()
+
+    hitsPerStep = []
+    for step in scanSteps:
+        hitsPerStep.append(activeSteps.count(step))
+
+    print(f"Processing {scanParam} scan through: {scanSteps}") 
+    print(scanFile["data"])
+
     t1Colours = ["darkolivegreen", "darkseagreen", "khaki"]
     t2Colours = ["teal", "cadetblue", "lightblue"]
     eColours = ["mediumvioletred", "lightcoral", "lightpink"]
 
     if scanParam == "vth_t1":
-        vth_t1s = set_thresholds(scanData, scanSteps, t1TargetNPE, t1TargetRate, "vth_t1", t1Colours)
+        vth_t1s = set_thresholds(hitsPerStep, scanSteps, t1TargetNPE, t1TargetRate, "vth_t1", t1Colours)
     elif scanParam == "vth_t2":
-        vth_t2s = set_thresholds(scanData, scanSteps, t2TargetNPE, t2TargetRate, "vth_t2", t2Colours)
+        vth_t2s = set_thresholds(hitsPerStep, scanSteps, t2TargetNPE, t2TargetRate, "vth_t2", t2Colours)
     elif scanParam == "vth_e":
-        vth_es = set_thresholds(scanData, scanSteps, eTargetNPE, eTargetRate, "vth_e", eColours)
+        vth_es = set_thresholds(hitsPerStep, scanSteps, eTargetNPE, eTargetRate, "vth_e", eColours)
     # elif scanParam == "OV":
     #     set_thresholds(scanData, scanSteps)
     # elif scanParam == "lsb_t1":
