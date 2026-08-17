@@ -28,7 +28,7 @@ def parseArguments():
 	parser.add_argument("--timeref", type=str, default="sync", dest="timeRef", choices=["sync", "wall", "step", "manual"], help="Selects the time reference for timestamps. Default: %(default)s. If 'manual' is selected, the user must provide a time reference using --user-timeref.")
 	parser.add_argument("--user-timeref", type=float, default=0, dest="userTimeRef", help="Defines the chosen user Wall time reference if --timeref is 'wall'. Default: %(default)s.")
 	# --- Optional Hardware / Environment Parameters ---
-	parser.add_argument("--param-table", type=str, dest="paramTable", help="Table containing the name and values of 1 or 2 parameters to be scanned (OV, vth_t1, etc.).")
+	parser.add_argument("--param-table", type=str, dest="paramTable", help="Table containing the name and values of 1 or 2 parameters to be scanned (OV, vth_t1, vth_t2, vth_e, disc_lsb_t1).")
 	parser.add_argument("--wait-on", dest="waitOn", type=str, help="Wait for named pipe signal before starting.")
 	parser.add_argument("--stop-on", dest="stopOn", type=str, default=None, help="Stop acquisition on named pipe signal.")
 	parser.add_argument("--portID", type=int, help="Set target FEBD port ID")
