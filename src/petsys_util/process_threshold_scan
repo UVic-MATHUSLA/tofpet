@@ -31,7 +31,7 @@ def normalize(l):
 def set_thresholds(data, steps, target_npe, target_rate, param, colours):
     thresholds = []
     for ch in channelIDs: 
-        energies = {st: data[data.step1 == st]['energy'].tolist() for st in steps}
+        energies = {st: data[data.get('step1') == st]['energy'].tolist() for st in steps}
         hits = [len(energies[st]) for st in steps]
 
         rate = np.array(hits)/timeInt           # calculate the rate of hits per step
