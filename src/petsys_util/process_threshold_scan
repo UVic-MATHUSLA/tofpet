@@ -82,8 +82,8 @@ def main():
 
     scanFile = uproot.open(args.inputRootFile + ".root")
     activeSteps = scanFile["data"]["step1"].array().tolist()
-    activeChan = scanFile["data"]["channel1"].array().tolist()
-    energies = scanFile["data"]["energy1"].array().tolist()
+    activeChan = scanFile["data"]["channelID"].array().tolist()
+    energies = scanFile["data"]["energy"].array().tolist()
 
     hitsPerStep = []
     for step in scanSteps:
