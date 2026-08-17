@@ -9,6 +9,43 @@ import argparse
 import math
 import glob
 
+def parseArguments():
+	parser = argparse.ArgumentParser(description='Acquire SIPM data from the DAQ system')
+	# --- Required Arguments ---
+	parser.add_argument("--config", type=str, required=True, help="Configuration file")
+	parser.add_argument("-o", type=str, dest="fileNamePrefix", required=True, help="Output data filename prefix. If --enable-realtime-processing is set, a suffix identifying the output data type will be added.")
+	parser.add_argument("--time", type=float, required=True, help="Acquisition time (in seconds)")
+	parser.add_argument("--mode", type=str, required=True, choices=["tot", "qdc", "mixed"], help="Acquisition mode (tot, qdc or mixed)")
+	# --- Boolean Flags ---
+	parser.add_argument("--enable-hw-trigger", dest="hwTrigger", action="store_true", help="Enable the hardware coincidence filter")
+	parser.add_argument('--enable-realtime-processing', dest="enableOnlineProcessing", action='store_true', help='Enable online (real-time) data processing.')
+	parser.add_argument("--write-raw-data", default=False, dest="writeRaw", action="store_true", help="If --enable-realtime-processing is set, write a raw data file. Default: %(default)s.")
+	# --- Conditional Processing Arguments (Kept optional for parsing) ---
+	parser.add_argument("--output-type", type=str, dest="outputType", choices=["raw", "singles", "groups", "coincidences"], help="Selects the type output processed (Required if --enable-realtime-processing is set).")
+	parser.add_argument("--output-format", type=str, dest="outputFormat", choices=["text", "textCompact", "binary", "binaryCompact", "root"], help="Selects the format of the output processed data (Required if --enable-realtime-processing is set).")
+	parser.add_argument("--write-fraction", type=float, default=100.0, dest="writeFraction", help="Selects the fraction of events (0.0 to 100.0) to be written. Default: %(default)s.")
+	parser.add_argument("--write-multiple-hits", type=int, default=1, dest="writeMultipleHits", help="Selects the number of hits to be written if output type is 'groups' or 'coincidences'. Default: %(default)s.")
+	parser.add_argument("--timeref", type=str, default="sync", dest="timeRef", choices=["sync", "wall", "step", "manual"], help="Selects the time reference for timestamps. Default: %(default)s. If 'manual' is selected, the user must provide a time reference using --user-timeref.")
+	parser.add_argument("--user-timeref", type=float, default=0, dest="userTimeRef", help="Defines the chosen user Wall time reference if --timeref is 'wall'. Default: %(default)s.")
+	# --- Optional Hardware / Environment Parameters ---
+	parser.add_argument("--param-table", type=str, dest="paramTable", help="Table containing the name and values of 1 or 2 parameters to be scanned (OV, vth_t1, etc.).")
+	parser.add_argument("--wait-on", dest="waitOn", type=str, help="Wait for named pipe signal before starting.")
+	parser.add_argument("--stop-on", dest="stopOn", type=str, default=None, help="Stop acquisition on named pipe signal.")
+	parser.add_argument("--portID", type=int, help="Set target FEBD port ID")
+	parser.add_argument("--slaveID", type=int, help="Set target FEBD slave ID")
+	args = parser.parse_args()
+	
+	if args.enableOnlineProcessing:
+		if not args.outputType:
+			parser.error("The following argument is required when --enable-realtime-processing is set: --output-type")
+		if not args.outputFormat:
+			parser.error("The following argument is required when --enable-realtime-processing is set: --output-format")
+	if args.timeRef == "wall" and args.userTimeRef is None:
+		parser.error("--user-timeref must be provided when --timeref is set to 'wall'")
+
+	return args
+
+
 def checkRequiredArgs(parser, required_args, conditional_args):
 	args, _ = parser.parse_known_args()
 	if getattr(args, "enableOnlineProcessing"):
@@ -29,43 +66,11 @@ def validateFifo(path):
 		print(f"Error: '{path}' exists but is not a named pipe (FIFO). Create it with: mkfifo {path}")
 		exit(1)
 
+
 def main():
-	parser = argparse.ArgumentParser(description='Acquire SIPM data from the DAQ system')
-	parser.add_argument("--config", type=str, required=True, help="Configuration file")
-	parser.add_argument("-o", type=str, dest="fileNamePrefix", required=True, help = "Output data filename prefix. If --enable-realtime-processing is set, a suffix identifying the output data type will be added for the processed data output file.")
-	parser.add_argument("--time", type=float, required=True, help="Acquisition time (in seconds)")
-	parser.add_argument("--mode", type=str, required=True, choices=["tot", "qdc", "mixed"], help = "Acquisition mode (tot, qdc or mixed)")
-	parser.add_argument("--enable-hw-trigger", dest="hwTrigger", action="store_true", help="Enable the hardware coincidence filter")
-	parser.add_argument('--enable-realtime-processing', dest="enableOnlineProcessing", action='store_true', help='Enable online (real-time) data processing.')
-	parser.add_argument("--output-type", type=str, dest="outputType", required=False, choices=["raw","singles", "groups", "coincidences"], help="If --enable-realtime-processing is set, this option selects the type output processed.")
-	parser.add_argument("--output-format", type=str, dest="outputFormat", required=False, choices=["text", "textCompact", "binary", "binaryCompact", "root"], help="If --enable-realtime-processing is set, this option selects the format of the output processed data.")
-	parser.add_argument("--write-fraction", type=float,  dest="writeFraction", required=False, help="If --enable-realtime-processing is set, this option selects the fraction of events (0.0–100.0 %) to be written to the output file. If not set, all events are written.")
-	parser.add_argument("--write-multiple-hits", type=int,  dest="writeMultipleHits", required=False, help="If --enable-realtime-processing is set, and output type is 'groups' or 'coincidences', this option selects the number of hits to be written in the output file. If not set, only 1 hit (with max amplitude) is written.")
-	parser.add_argument("--timeref", type=str, dest="timeRef", required=False, choices=["sync", "wall", "step", "manual"], help="If --enable-realtime-processing is set, this option selects the time reference for timestamps of the processed data.")
-	parser.add_argument("--user-timeref", type=float, dest="userTimeRef", required=False, help="If --timeref is set to 'wall', this variable defines the chosen user Wall time reference (in seconds since UNIX Epoch) for the timestamps of the processed data.")
-	parser.add_argument("--write-raw-data", dest="writeRaw", action="store_true", help="If --enable-realtime-processing is set, write a raw data file in addition to the output processed data file.")
-	parser.add_argument("--param-table", type=str, dest="paramTable", help="Table containing the name and values of 1 or 2 parameters to be scanned during data acquisition. Allowed parameters are: OV (SIPM Overvoltage), vth_t1 (t1 discriminator threshold, in DAC units relative to the channel baseline), vth_t2 (t2 discriminator threshold, in DAC units relative to the channel baseline), vth_e (e discriminator threshold, in DAC units relative to the channel baseline), disc_lsb_t1 (t1 discriminator DAC LSB)")
-	parser.add_argument("--wait-on", dest="waitOn", type=str, help="Wait for named pipe signal before starting the acquisition")
-	parser.add_argument("--stop-on", dest="stopOn", type=str, default=None, help="Stop acquisition on named pipe signal")
-	parser.add_argument("--portID",  type=int, required=False, help="Set target FEBD port ID")
-	parser.add_argument("--slaveID", type=int, required=False, help="Set target FEBD slave ID")
-	args = parser.parse_args()
-	
-	conditionalArgs = []
-	requiredArgs = []
-	if args.enableOnlineProcessing:
-		requiredArgs = ["outputType","outputFormat"]
-	else:
-		conditionalArgs = ["writeRaw", "outputType","outputFormat","writeFraction","writeMultipleHits","timeRef"]
+	args = parseArguments()
 
-	checkRequiredArgs(parser, requiredArgs, conditionalArgs)
-
-	parser.set_defaults(writeFraction=100, writeMultipleHits=1, timeRef="sync", userTimeRef=0, writeRaw=False)
-	
-	args = parser.parse_args()
-		
 	validParams = ["OV","vth_t1","vth_t2","vth_e","disc_lsb_t1"]
-
 	if args.paramTable is not None:
 		if not os.path.exists(args.paramTable):
 			print("Error: no such file - %s" % args.paramTable)
@@ -87,7 +92,6 @@ def main():
 			print("Error: only two parameters can be scanned at the same time")
 			exit(1)
 
-
 	mask = config.LOAD_ALL
 	if args.mode != "mixed":
 		mask ^= config.LOAD_QDCMODE_MAP
@@ -96,7 +100,6 @@ def main():
 		mask ^= config.LOAD_FIRMWARE_QDC_CALIBRATION
 
 	systemConfig = config.ConfigFromFile(args.config, loadMask=mask)
-
 	conn = daqd.Connection()
 
 	if (args.portID != None and args.slaveID != None):
@@ -106,13 +109,11 @@ def main():
 	else:
 		conn.initializeSystem()
 	
-
 	systemConfig.loadToHardware(conn, bias_enable=config.APPLY_BIAS_ON, hw_trigger_enable=args.hwTrigger, qdc_mode = args.mode)
 
 	if args.waitOn:
 		validateFifo(args.waitOn)
 		conn.waitOnNamedPipe(args.waitOn)
-
 	if args.stopOn:
 		validateFifo(args.stopOn)
 
@@ -138,7 +139,6 @@ def main():
 
 	activeAsics = conn.getActiveAsics()
 	activeChannels = [ (portID, slaveID, chipID, channelID) for channelID in range(64) for portID, slaveID, chipID in activeAsics ]
-
 	asicsConfig = conn.getAsicsConfig()
 
 	if args.paramTable is None:
@@ -196,8 +196,6 @@ def main():
 					print("Python:: Acquiring data for: " + parNames[0] + " = " + str(step1) + " ; " + parNames[1] + " = " + str(step2))
 				conn.setAsicsConfig(asicsConfig)
 				conn.acquire(args.time, float(step1), float(step2), args.stopOn)
-
-
 
 	systemConfig.loadToHardware(conn, bias_enable=config.APPLY_BIAS_OFF)
 	return 0
