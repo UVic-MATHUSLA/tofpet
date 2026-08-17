@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import os, sys
-sys.path += [ "sw_daq_tofpet2", "shared" ]
-
 from petsys import daqd # type: ignore
-import argparse, time
-
+import argparse
+import time
+import sys
+sys.path += [ "sw_daq_tofpet2", "shared" ]
 
 def get_link_info(conn, portID, slaveID, linkID):
 	conn.write_config_register(portID, slaveID, 16, 0x0450, linkID)
@@ -72,7 +71,7 @@ def main(argv):
 
 	tgr_link_status_2 = {}
 	for linkID in range(128+16):
-                tgr_link_status_2[linkID] = get_link_info(conn, *tu, linkID)
+		tgr_link_status_2[linkID] = get_link_info(conn, *tu, linkID)
 
 
 	for k in febd_link_status_1.keys():
@@ -146,4 +145,3 @@ def check_link(l, d, e, dmin, dmax):
 
 if __name__ == '__main__':
 	sys.exit(main(sys.argv))
-

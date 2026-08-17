@@ -5,12 +5,9 @@
 import sys
 sys.path.append("/usr/local/lib")
 
-from copy import deepcopy
 import argparse
-from time import sleep
 import ROOT
-from sys import stdout, argv
-from math import sqrt
+from sys import argv
 import random
 import re
 from statistics import mean

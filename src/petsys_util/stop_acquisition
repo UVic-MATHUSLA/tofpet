@@ -6,7 +6,6 @@ import argparse
 
 def main():
 	parser = argparse.ArgumentParser(description='Stop acquisition')
-
 	connection = daqd.Connection()
 	connection.stopAcquisition()
 	

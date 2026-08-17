@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 from petsys import daqd, config
-from copy import deepcopy
 import argparse
 
 parser = argparse.ArgumentParser(description='Make a simple discriminator settings table')

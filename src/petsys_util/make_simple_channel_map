@@ -2,11 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from petsys import daqd, config, info
-from copy import deepcopy
 import argparse
-import struct
-import sys
-
 
 def main():
 	parser = argparse.ArgumentParser(description='Make a simple channel and trigger map')

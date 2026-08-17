@@ -4,7 +4,6 @@
 from petsys import config
 import argparse
 import re
-from sys import argv
 
 parser = argparse.ArgumentParser(description='Make a UVic discriminator settings table')
 parser.add_argument("--config", type=str, required=True, help="Configuration file")

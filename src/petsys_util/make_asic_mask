@@ -2,16 +2,13 @@
 # -*- coding: utf-8 -*-
 
 from petsys import daqd, config
-from copy import deepcopy
 import argparse
 import os
-import subprocess
 
 parser = argparse.ArgumentParser(description='Create an ASIC mask (for enabling only a subset of connected ASICS) and describe how to export it as system environment variable')
 
 parser.add_argument('--asics', nargs='*', type=int, default = None, help='List of Asics to be enabled (command-line)')
 parser.add_argument('--asics_file', type=str, default = None, help='List of Asics to be enabled (one column text file)')
-
 args = parser.parse_args()
 
 

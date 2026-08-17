@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 from petsys import daqd, config, fe_power
-from copy import deepcopy
 import argparse
 
 def main():

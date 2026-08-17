@@ -3,7 +3,6 @@
 import sys
 import argparse
 import time
-import math
 from petsys import daqd, spi, boot
 
 PROM_CHIP_ID = 0xFFEF
