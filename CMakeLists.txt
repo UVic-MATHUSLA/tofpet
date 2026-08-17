@@ -160,6 +160,10 @@ configure_file("src/online_monitor/launch_monitor" "launch_monitor" COPYONLY)
 configure_file("src/petsys_util/acquire_sipm_data_with_monitoring" "acquire_sipm_data_with_monitoring" COPYONLY)
 configure_file("config.ini" "config.ini" COPYONLY)
 
+file(CHMOD "process_threshold_scan" PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
+file(CHMOD "make_uvic_channel_map" PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
+file(CHMOD "make_uvic_disc_settings_table" PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
+
 include_directories( ${ROOT_INCDIR} )
 link_libraries(${ROOT_LIBS})
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ROOT_CXX_FLAGS}")
