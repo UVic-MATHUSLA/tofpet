@@ -397,13 +397,12 @@ void RawReader::processStep(bool verbose, EventSink<RawHit> *sink)
 	mysink->finish();
 	if(verbose) {
 		fprintf(stderr, ">> RawReader report\n");
-		fprintf(stderr, "step values: %f %f\n", stepValue1, stepValue2);
-		fprintf(stderr, "data frames total: %10lld total\n", nFrames);
+		fprintf(stderr, "data frames total:\n%10lld\n", nFrames);
 		fprintf(stderr, "%10lld (%4.1f%%) were missing all data\n", nFramesLost0, 100.0 * nFramesLost0 / (nFrames));
 		fprintf(stderr, "%10lld (%4.1f%%) were missing some data\n", nFramesLostN, 100.0 * nFramesLostN / (nFrames));
-		fprintf(stderr, "events total: %10lld\n", nEventsNoLost + nEventsSomeLost);
+		fprintf(stderr, "events total:\n%10lld\n", nEventsNoLost + nEventsSomeLost);
 		long long goodFrames = nFrames - nFramesLost0 - nFramesLostN;
-		fprintf(stderr, "events per frame: %10.1f average\n", 1.0 * (nEventsNoLost+ nEventsSomeLost) / goodFrames);
+		fprintf(stderr, "events/frame:\n%10.3f average\n", 1.0 * (nEventsNoLost+ nEventsSomeLost) / goodFrames);
 		sink->report();
 	}
 
