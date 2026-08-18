@@ -13,3 +13,4 @@ build/*
 *.md
 
 *.tofpetVenv
+*.clang-format
