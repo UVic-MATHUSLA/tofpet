@@ -62,7 +62,7 @@ void CoincidenceGrouper::resetCounters()
 void CoincidenceGrouper::report()
 {
 	fprintf(stderr, ">> CoincidenceGrouper report\n");
-	fprintf(stderr, " prompts passed\n");
-	fprintf(stderr, "  %10lu \n", nPrompts);
+	fprintf(stderr, "   prompts passed:\n");
+	fprintf(stderr, "   %13lu \n", nPrompts);
 	UnorderedEventHandler<GammaPhoton, Coincidence>::report();
 }

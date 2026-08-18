@@ -66,7 +66,7 @@ void CoarseSorter::report()
 {
 	u_int64_t nTotal = nSingleRead;
 	fprintf(stderr, ">> CoarseSorter report\n");
-	fprintf(stderr, " events passed\n");
-	fprintf(stderr, "  %10lu\n", nSingleRead);
+	fprintf(stderr, "   events passed\n");
+	fprintf(stderr, "  %13lu\n", nSingleRead);
 	UnorderedEventHandler<RawHit, RawHit>::report();
 }

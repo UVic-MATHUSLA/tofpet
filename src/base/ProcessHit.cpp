@@ -32,7 +32,7 @@ EventBuffer<Hit> * ProcessHit::handleEvents (EventBuffer<RawHit> *inBuffer)
 	u_int64_t lXYZMissing = 0;
 	u_int64_t lSent = 0;
 
-	for(int i = 0; i < N; i++) {
+	for(int i = 0; i < N; i++){
 		RawHit &in = inBuffer->get(i);
 		Hit &out = outBuffer->getWriteSlot();
 		out.raw = &in;
@@ -49,17 +49,15 @@ EventBuffer<Hit> * ProcessHit::handleEvents (EventBuffer<RawHit> *inBuffer)
 			out.x = out.y = out.z = 0.0;
 			out.xi = out.yi = 0;
 		}
-		else {
-	      		
+		else{
 			SystemConfig::ChannelConfig &cc = systemConfig->getChannelConfig(in.channelID);
 			SystemConfig::TacConfig &ct = cc.tac_T[in.tacID];
 			SystemConfig::TacConfig &ce = cc.tac_E[in.tacID];
 			SystemConfig::QacConfig &cq = cc.qac_Q[in.tacID];
 			SystemConfig::EnergyConfig &cen = cc.eCal[in.tacID];
-	       
 			
 			out.time = in.time;
-			if(useTDC) {
+			if(useTDC){
 				float q_T = ( -ct.a1 + sqrtf((ct.a1 * ct.a1) - (4.0f * (ct.a0 - in.tfine) * ct.a2))) / (2.0f * ct.a2) ;
 				out.time = double(in.time) - q_T - ct.t0;
 				if(useTimeOffsetCal)
@@ -77,8 +75,7 @@ EventBuffer<Hit> * ProcessHit::handleEvents (EventBuffer<RawHit> *inBuffer)
 				}
 				out.energy = out.timeEnd - out.time;
 			}
-			else {
-				
+			else{
 				out.timeEnd = in.timeEnd;
 				out.energy = in.efine;
 			
@@ -136,10 +133,8 @@ EventBuffer<Hit> * ProcessHit::handleEvents (EventBuffer<RawHit> *inBuffer)
 						out.energy = Energy;
 						if(cen.p0 == 0) eventFlags |= 0x10;
 					}
-				
 				}
 			}
-			
 			out.region = -1;
 			out.x = out.y = out.z = 0.0;
 			out.xi = out.yi = 0;
@@ -154,7 +149,6 @@ EventBuffer<Hit> * ProcessHit::handleEvents (EventBuffer<RawHit> *inBuffer)
 			}
 			
 		}
-		
 		lReceived += 1;
 		if((eventFlags & 0x1) != 0) lReceivedInvalid += 1;
 		if((eventFlags & 0x2) != 0) lTDCCalibrationMissing += 1;
@@ -196,17 +190,17 @@ void ProcessHit::resetCounters()
 void ProcessHit::report()
 {
 	fprintf(stderr, ">> ProcessHit report\n");
-	fprintf(stderr, " hits received\n");
-	fprintf(stderr, "  %10lu total\n", nReceived);
-	fprintf(stderr, "  %10lu (%4.1f%%) invalid\n", nReceivedInvalid, 100.0 * nReceivedInvalid / nReceived);
-	fprintf(stderr, " hits dropped\n");
-	fprintf(stderr, "  %10lu (%4.1f%%) missing TDC calibration\n", nTDCCalibrationMissing, 100.0 * nTDCCalibrationMissing / nReceived);
-	fprintf(stderr, "  %10lu (%4.1f%%) missing QDC calibration\n", nQDCCalibrationMissing, 100.0 * nQDCCalibrationMissing / nReceived);
+	fprintf(stderr, "   hits received:\n");
+	fprintf(stderr, "   %13lu total\n", nReceived);
+	fprintf(stderr, "   %13lu (%4.1f%%) invalid\n", nReceivedInvalid, 100.0 * nReceivedInvalid / nReceived);
+	fprintf(stderr, "   hits dropped:\n");
+	fprintf(stderr, "   %13lu (%4.1f%%) missing TDC calibration\n", nTDCCalibrationMissing, 100.0 * nTDCCalibrationMissing / nReceived);
+	fprintf(stderr, "   %13lu (%4.1f%%) missing QDC calibration\n", nQDCCalibrationMissing, 100.0 * nQDCCalibrationMissing / nReceived);
 	if(systemConfig->useEnergyCalibration())
-		fprintf(stderr, "  %10lu (%4.1f%%) missing Energy calibration\n", nEnergyCalibrationMissing, 100.0 * nEnergyCalibrationMissing / nReceived);
-	fprintf(stderr, "  %10lu (%4.1f%%) missing XYZ information\n", nXYZMissing, 100.0 * nXYZMissing / nReceived);
-	fprintf(stderr, " hits passed\n");
-	fprintf(stderr, "  %10lu (%4.1f%%)\n", nSent, 100.0 * nSent / nReceived);
+		fprintf(stderr, "   %13lu (%4.1f%%) missing Energy calibration\n", nEnergyCalibrationMissing, 100.0 * nEnergyCalibrationMissing / nReceived);
+	fprintf(stderr, "   %13lu (%4.1f%%) missing XYZ information\n", nXYZMissing, 100.0 * nXYZMissing / nReceived);
+	fprintf(stderr, "   hits passed:\n");
+	fprintf(stderr, "   %13lu (%4.1f%%)\n", nSent, 100.0 * nSent / nReceived);
 	
 	UnorderedEventHandler<RawHit, Hit>::report();
 }
