@@ -11,6 +11,9 @@ build/*
 
 *.pdf
 *.md
+*.pcm
 
 *.tofpetVenv
 *.clang-format
+
+commands.txt
