@@ -30,30 +30,41 @@ int psDrawCTR(char const *filePrefix, Int_t channelA = -1, Int_t channelB = -1) 
 	sprintf(fn, "%s.lidx", filePrefix);   // get index file name
 	FILE *indexFile = fopen(fn, "rb");    // open index file
 
-	Double_t tBinWidth = 30;   // time bin width in ps
-	Double_t wMax = 5000;      // maximum time window in ps
-	TH1F *hDelta = new TH1F("hDelta", "Coincidence time difference", 2 * wMax / tBinWidth, -wMax,
-							wMax);   // histogram for coincidence time difference
+	Double_t tBinWidth = 30;         // time bin width in ps
+	Double_t wMax = 5000;            // maximum time window in ps
+	const Int_t N_CHANNELS = 1024;   // number of channels in the data
 
-	const Int_t N_CHANNELS = 1024;
-	TH2F *hC2 = new TH2F("hC2", "C2", N_CHANNELS, 0, N_CHANNELS, N_CHANNELS, 0,
-						 N_CHANNELS);   // histogram for 2D channel correlation
+	// [channelA, channelB]
+    //  [0,14],   [1,7],  [2,15],  [3,12],  [4,27],  [5,10],  [6,11],  [8,13],
+    //  [9,50], [16,22], [17,20], [18,23], [19,21], [24,31], [25,32], [26,30],
+    // [28,29], [33,41], [34,40], [35,37], [36,39], [38,57], [42,48], [43,49],
+    // [44,47], [45,46], [51,60], [52,63], [53,56], [54,55], [58,61], [59,62]]
+	// channels with the same index in the two arrays are coincident pairs to be analyzed for CTR
+	int channelA[32] = {0, 1, 2, 3, 4, 5, 6, 8, 9,16,17,18,19,24,25,26,28,33,34,35,36,38,42,43,44,45,51,52,53,54,58,59};
+	int channelB[32] = {14,7,15,12,27,10,11,13,50,22,20,23,21,31,32,30,29,41,40,37,39,57,48,49,47,46,60,63,56,55,61,62};
+
+	// histogram for coincidence time difference
+	TH1F *hDelta = new TH1F("hDelta", "Coincidence time difference", 2 * wMax / tBinWidth, -wMax, wMax);
+	// histogram for 2D channel correlation
+	TH2F *hC2 = new TH2F("hC2", "C2", N_CHANNELS, 0, N_CHANNELS, N_CHANNELS, 0, N_CHANNELS);
 
 	int minToT = 0;                                                              // minimum ToT to consider for analysis
 	int maxToT = 15;                                                             // maximum ToT to consider for analysis
 	TH1F *hE1 = new TH1F("hE1", "E 1", (maxToT - minToT) * 5, minToT, maxToT);   // histogram for charge spectrum of channel 1
 	TH1F *hE2 = new TH1F("hE2", "E 2", (maxToT - minToT) * 5, minToT, maxToT);   // histogram for charge spectrum of channel 2
 
-	struct CEvent {
+	struct CoincEvent {
 		Long64_t time1;   // time of event 1
 		Long64_t time2;   // time of event 2
 		Float_t tot1;     // ToT of event 1
 		Float_t tot2;     // ToT of event 2
+		Int_t id1;        // channel ID of event 1
+		Int_t id2;        // channel ID of event 2
 	};
 
 	const Int_t MAX_EVENTS = 1000000;
 	const Int_t MAX_EVENTS_TOTAL = 250000000;
-	CEvent *eventBuffer = new CEvent[MAX_EVENTS];   // buffer to hold events for analysis
+	CoincEvent *eventBuffer = new CoincEvent[MAX_EVENTS];   // buffer to hold events for analysis
 
 	long long stepBegin, stepEnd;
 	float step1, step2;
@@ -74,10 +85,16 @@ int psDrawCTR(char const *filePrefix, Int_t channelA = -1, Int_t channelB = -1) 
 
 		fseek(dataFile, stepBegin, SEEK_SET);
 		Int_t count = 0;
-		Event ei;
+		Event eventi;
 		int nRead = 0;
 
-		// If channelA and channelB are not specified, determine the channels with the highest correlation from the data
+		// iterate through indeces of channelA and channelB to find the maximum bin in the 2D histogram hC2
+		printf("Coincident channel pairs:\n");
+		for(int i = 0; i < 32; i++) {
+			printf("[%d,%d] ", channelA[i], channelB[i]);
+		}
+		printf("\n");
+
 		if(channelA == -1 && channelB == -1) {
 			while(ftell(dataFile) < stepEnd && fread(&ei, sizeof(ei), 1, dataFile) == 1 && count < MAX_EVENTS_TOTAL) {
 				if(ei.e1 < minToT || ei.e2 < minToT) continue;
@@ -91,7 +108,7 @@ int psDrawCTR(char const *filePrefix, Int_t channelA = -1, Int_t channelB = -1) 
 			hC2->GetBinXYZ(binMax, binx, biny, binz);
 			channelA = binx - 1;
 			channelB = biny - 1;
-			printf("CA max=%d CB max=%d\n", channelA, channelB);
+			printf("ChA=%d ChB=%d\n", channelA, channelB);
 		}
 		count = 0;
 		char hName[128];
@@ -105,11 +122,13 @@ int psDrawCTR(char const *filePrefix, Int_t channelA = -1, Int_t channelB = -1) 
 			bool selectedPair = ((ei.id1 == channelA) || (ei.id1 == channelB)) && ((ei.id2 == channelA) || (ei.id2 == channelB));
 			if(!selectedPair) { continue; }
 
-			CEvent &e = eventBuffer[count];
+			CoincEvent &e = eventBuffer[count];
 			e.time1 = ei.time1;
 			e.time2 = ei.time2;
 			e.tot1 = ei.e1;
 			e.tot2 = ei.e2;
+			e.id1 = ei.id1;
+			e.id2 = ei.id2;
 			count++;
 
 			hE1->Fill(ei.e1);
@@ -128,12 +147,11 @@ int psDrawCTR(char const *filePrefix, Int_t channelA = -1, Int_t channelB = -1) 
 			continue;
 		}
 
-#if ROOT_VERSION_CODE > ROOT_VERSION(6, 0, 0)
+	#if ROOT_VERSION_CODE > ROOT_VERSION(6, 0, 0)
 		Double_t *xPositions1 = spectrum->GetPositionX();
-#else
+	#else
 		Float_t *xPositions1 = spectrum->GetPositionX();
-#endif
-
+	#endif
 		Float_t x1_psc = 0;
 		Float_t x1_pe = 0;
 
@@ -143,7 +161,6 @@ int psDrawCTR(char const *filePrefix, Int_t channelA = -1, Int_t channelB = -1) 
 				x1_pe = xPositions1[i];
 			}
 		}
-
 		spectrum = new TSpectrum(1, 3);
 		spectrum->Search(hE2, 3, " ", 0.1);
 		nPeaks = spectrum->GetNPeaks();
@@ -152,12 +169,11 @@ int psDrawCTR(char const *filePrefix, Int_t channelA = -1, Int_t channelB = -1) 
 			continue;
 		}
 
-#if ROOT_VERSION_CODE > ROOT_VERSION(6, 0, 0)
+	#if ROOT_VERSION_CODE > ROOT_VERSION(6, 0, 0)
 		Double_t *xPositions2 = spectrum->GetPositionX();
-#else
+	#else
 		Float_t *xPositions2 = spectrum->GetPositionX();
-#endif
-
+	#endif
 		Float_t x2_psc = 0;
 		Float_t x2_pe = 0;
 
@@ -194,7 +210,7 @@ int psDrawCTR(char const *filePrefix, Int_t channelA = -1, Int_t channelB = -1) 
 
 		sN = 1;
 		for(Int_t i = 0; i < count; i++) {
-			CEvent &e = eventBuffer[i];
+			CoincEvent &e = eventBuffer[i];
 			if((e.tot1 < (x1 - sN * sigma1)) || (e.tot1 > (x1 + sN * sigma1))) continue;
 			if((e.tot2 < (x2 - sN * sigma2)) || (e.tot2 > (x2 + sN * sigma2))) continue;
 			Float_t delta = e.time1 - e.time2;
@@ -228,6 +244,7 @@ int psDrawCTR(char const *filePrefix, Int_t channelA = -1, Int_t channelB = -1) 
 		sprintf(title, "Charge Spectrum (Channel %d)", channelA);
 		hE2->SetTitle(title);
 		hE2->GetXaxis()->SetTitle("Charge [a.u.]");
+
 		c2->Modified();
 		char pdfName[1024];
 		sprintf(pdfName, "%s_%3.2f_%3.2f.pdf", filePrefix, step1, step2);
