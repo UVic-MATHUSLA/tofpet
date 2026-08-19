@@ -85,7 +85,7 @@ int psDrawCTR(char const *filePrefix, Int_t channelA = -1, Int_t channelB = -1) 
 
 		fseek(dataFile, stepBegin, SEEK_SET);
 		Int_t count = 0;
-		Event eventi;
+		Event ei;
 		int nRead = 0;
 
 		// iterate through indeces of channelA and channelB to find the maximum bin in the 2D histogram hC2
