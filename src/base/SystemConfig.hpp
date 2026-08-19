@@ -1,19 +1,16 @@
 #ifndef __PETSYS_SYSTEMCONFIG_HPP__DEFINED__
 #define __PETSYS_SYSTEMCONFIG_HPP__DEFINED__
 
-#include <stdlib.h>
-#include <stdint.h>
-#include <vector>
-#include <set>
 #include <map>
+#include <set>
+#include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <vector>
 
-namespace PETSYS
-{
-
-	class SystemConfig
-	{
-	public:
+namespace PETSYS {
+	class SystemConfig {
+	  public:
 		static const u_int64_t LOAD_ALL = 0xFFFFFFFFFFFFFFFFULL;
 		static const u_int64_t LOAD_SYSTEM_MAP = 0x0000000000000001ULL;
 		static const u_int64_t LOAD_TDC_CALIBRATION = 0x0000000000000002ULL;
@@ -29,6 +26,7 @@ namespace PETSYS
 			float a1;
 			float a2;
 		};
+
 		struct QacConfig {
 			float p0;
 			float p1;
@@ -41,6 +39,7 @@ namespace PETSYS
 			float p8;
 			float p9;
 		};
+
 		struct FirmwareConfig {
 			float p0;
 			float p1;
@@ -48,12 +47,14 @@ namespace PETSYS
 			float k0;
 			bool isValid;
 		};
+
 		struct EnergyConfig {
 			float p0;
 			float p1;
 			float p2;
 			float p3;
 		};
+
 		struct ChannelConfig {
 			float x, y, z;
 			int xi, yi;
@@ -88,30 +89,33 @@ namespace PETSYS
 		static SystemConfig *fromFile(const char *configFileName, u_int64_t mask);
 
 		inline bool useTDCCalibration() { return hasTDCCalibration; };
+
 		inline bool useQDCCalibration() { return hasQDCCalibration; };
+
 		inline bool useEnergyCalibration() { return hasEnergyCalibration; };
+
 		inline bool useFirmwareEmpiricalCalibrations() { return hasFirmwareEmpiricalCalibrations; };
+
 		inline bool useTimeOffsetCalibration() { return hasTimeOffsetCalibration; };
+
 		inline bool useXYZ() { return hasXYZ; };
 
-		inline SystemConfig::ChannelConfig &getChannelConfig(unsigned channelID){
+		inline SystemConfig::ChannelConfig &getChannelConfig(unsigned channelID) {
 			unsigned indexH = channelID / 4096;
 			unsigned indexL = channelID % 4096;
 
 			ChannelConfig *ptr = channelConfig[indexH];
-			if (ptr == NULL)
-				return nullChannelConfig;
-			else
-				return ptr[indexL];
+			if(ptr == NULL) return nullChannelConfig;
+			else return ptr[indexL];
 		};
 
 		inline bool isCoincidenceAllowed(int r1, int r2) {
-			if ((r1 < 0) || (r2 < 0)) return false;
+			if((r1 < 0) || (r2 < 0)) return false;
 			return coincidenceTriggerMap[r1 * MAX_TRIGGER_REGIONS + r2];
 		};
 
 		inline bool isMultiHitAllowed(int r1, int r2) {
-			if ((r1 < 0) || (r2 < 0)) return false;
+			if((r1 < 0) || (r2 < 0)) return false;
 			return multihitTriggerMap[r1 * MAX_TRIGGER_REGIONS + r2];
 		};
 
@@ -120,8 +124,7 @@ namespace PETSYS
 
 		SystemConfig();
 		~SystemConfig();
-
-	private:
+	  private:
 		void touchChannelConfig(unsigned channelID);
 		static bool areHwTriggerThresholdsDefault(SystemConfig *config);
 		static void loadTDCCalibration(SystemConfig *config, const char *fn);
@@ -143,12 +146,11 @@ namespace PETSYS
 		ChannelConfig **channelConfig;
 		ChannelConfig nullChannelConfig;
 
-		static const unsigned MAX_TRIGGER_REGIONS = 4096; // 1024 FEB/D x 4 regions;
+		static const unsigned MAX_TRIGGER_REGIONS = 4096;   // 1024 FEB/D x 4 regions;
 
 		bool *coincidenceTriggerMap;
 		bool *multihitTriggerMap;
 	};
+}   // namespace PETSYS
 
-}
-
-#endif // __PETSYS_SYSTEMCONFIG_HPP__DEFINED__
+#endif   // __PETSYS_SYSTEMCONFIG_HPP__DEFINED__

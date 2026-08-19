@@ -1,19 +1,18 @@
 #define __PETSYS_THREADPOOL_CPP__DEFINED__
 #include "ThreadPool.hpp"
-#include <unistd.h>
-#include <stdio.h>
 #include <climits>
+#include <stdio.h>
+#include <unistd.h>
 
 using namespace PETSYS;
 using namespace std;
 
-
 namespace PETSYS {
 	BaseThreadPool::BaseThreadPool() {
-		auto nCPU = sysconf(_SC_NPROCESSORS_ONLN) - int(0.1*sysconf(_SC_NPROCESSORS_ONLN));
+		auto nCPU = sysconf(_SC_NPROCESSORS_ONLN) - int(0.1 * sysconf(_SC_NPROCESSORS_ONLN));
 		if(nCPU < 1) nCPU = 1;
 		queue = std::deque<job_t>();
-		maxQueueSize = nCPU/4;
+		maxQueueSize = nCPU / 4;
 		if(maxQueueSize < 1) maxQueueSize = 1;
 
 		terminate = false;
@@ -29,9 +28,8 @@ namespace PETSYS {
 			workers[i].isBusy = false;
 			pthread_create(&workers[i].thread, NULL, thread_routine, &workers[i]);
 		}
-
 	};
-	
+
 	BaseThreadPool::~BaseThreadPool() {
 		this->completeQueue();
 
@@ -40,53 +38,39 @@ namespace PETSYS {
 		pthread_cond_broadcast(&cond_queued);
 		pthread_mutex_unlock(&lock);
 
-		for(int i = 0; i < nWorkers; i++) {
-			pthread_join(workers[i].thread, NULL);
-		}
+		for(int i = 0; i < nWorkers; i++) { pthread_join(workers[i].thread, NULL); }
 
-		delete [] workers;
+		delete[] workers;
 
 		pthread_cond_destroy(&cond_completed);
 		pthread_cond_destroy(&cond_dequeued);
 		pthread_cond_destroy(&cond_queued);
 		pthread_mutex_destroy(&lock);
 	}
-	
-	void BaseThreadPool::queueTask(void *buffer, void *sink)
-	{
+
+	void BaseThreadPool::queueTask(void *buffer, void *sink) {
 		pthread_mutex_lock(&lock);
-		while(queue.size() >= maxQueueSize) {
-			pthread_cond_wait(&cond_dequeued, &lock);
-		}
-		
-		job_t job = {
-				.b = buffer,
-				.s = sink
-			};
+		while(queue.size() >= maxQueueSize) { pthread_cond_wait(&cond_dequeued, &lock); }
+
+		job_t job = {.b = buffer, .s = sink};
 
 		queue.push_back(job);
 		pthread_cond_signal(&cond_queued);
 		pthread_mutex_unlock(&lock);
 	}
-	
-	void BaseThreadPool::completeQueue()
-	{
+
+	void BaseThreadPool::completeQueue() {
 		pthread_mutex_lock(&lock);
-		while (!queue.empty()) {
-			pthread_cond_wait(&cond_dequeued, &lock);
-		}
+		while(!queue.empty()) { pthread_cond_wait(&cond_dequeued, &lock); }
 
 		for(int i = 0; i < nWorkers; i++) {
-			if(workers[i].isBusy) {
-				pthread_cond_wait(&cond_completed, &lock);
-			}	
+			if(workers[i].isBusy) { pthread_cond_wait(&cond_completed, &lock); }
 		}
 		pthread_mutex_unlock(&lock);
-	}	
+	}
 
-	void * BaseThreadPool::thread_routine(void *arg)
-	{
-		worker_t *self = (worker_t *)arg;
+	void *BaseThreadPool::thread_routine(void *arg) {
+		worker_t *self = (worker_t *) arg;
 		BaseThreadPool *pool = self->pool;
 
 		pthread_mutex_lock(&pool->lock);
@@ -101,7 +85,7 @@ namespace PETSYS {
 			self->isBusy = true;
 			pthread_cond_signal(&pool->cond_dequeued);
 			pthread_mutex_unlock(&pool->lock);
-			
+
 			pool->runTask(job.b, job.s);
 
 			pthread_mutex_lock(&pool->lock);
@@ -111,8 +95,5 @@ namespace PETSYS {
 		pthread_mutex_unlock(&pool->lock);
 		return NULL;
 	}
-	
-	
-	
-}
+}   // namespace PETSYS
 

@@ -1,12 +1,11 @@
 #ifndef __PETSYS__EVENTSOURCESINK_HPP__DEFINED__
 #define __PETSYS__EVENTSOURCESINK_HPP__DEFINED__
-#include <stdio.h>
 #include "EventBuffer.hpp"
+#include <stdio.h>
 
 namespace PETSYS {
-	template <class TEventInput>
-	class EventSink {
-	public:
+	template <class TEventInput> class EventSink {
+	  public:
 		virtual void pushT0(double t0) = 0;
 		virtual void pushEvents(EventBuffer<TEventInput> *buffer) = 0;
 		virtual void finish() = 0;
@@ -15,41 +14,28 @@ namespace PETSYS {
 		virtual ~EventSink() {};
 	};
 
-	template <class TEventOutput>
-	class EventSource {
-	public:
-		EventSource(EventSink<TEventOutput> *sink) {
-			this->sink = sink;
-		};
-		
-		virtual ~EventSource() {
-			delete this->sink;
-		};
-	protected:
+	template <class TEventOutput> class EventSource {
+	  public:
+		EventSource(EventSink<TEventOutput> *sink) { this->sink = sink; };
+
+		virtual ~EventSource() { delete this->sink; };
+	  protected:
 		EventSink<TEventOutput> *sink;
-
 	};
-	
-	template <class TEventInput> 
-	class NullSink : public EventSink<TEventInput> {
-	public:
-		NullSink() { };
+
+	template <class TEventInput> class NullSink: public EventSink<TEventInput> {
+	  public:
+		NullSink() {};
 		virtual void pushT0(double t0) {};
-		virtual void pushEvents(EventBuffer<TEventInput> *buffer) {
-			delete buffer;
-		};
-		
-		virtual void finish() {
-		};
-		
-		virtual void report() {
-		};
 
-		virtual void resetCounters() {
-		};
-		~NullSink() {
-		};
+		virtual void pushEvents(EventBuffer<TEventInput> *buffer) { delete buffer; };
+
+		virtual void finish() {};
+
+		virtual void report() {};
+
+		virtual void resetCounters() {};
+		~NullSink() {};
 	};
-	
-}
+}   // namespace PETSYS
 #endif

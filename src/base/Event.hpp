@@ -2,14 +2,12 @@
 #define __PETSYS_EVENT_HPP__DEFINED__
 
 #include <cstddef>
-#include <sys/types.h>
 #include <stdint.h>
+#include <sys/types.h>
 
 namespace PETSYS {
-	
 	// Maximum event mis-ordering to consider
 	static const float MAX_UNORDER = 20.0;
-	
 
 	struct RawHit {
 		bool valid;
@@ -17,17 +15,14 @@ namespace PETSYS {
 		long long time;
 		long long timeEnd;
 		unsigned int channelID;
-
 		unsigned long frameID;
 		unsigned short tcoarse;
 		unsigned short ecoarse;
 		unsigned short tfine;
 		unsigned short efine;
 		unsigned short tacID;
-		
-		RawHit() {
-			valid = false;
-		};
+
+		RawHit() { valid = false; };
 	};
 
 	struct Hit {
@@ -36,14 +31,13 @@ namespace PETSYS {
 		double time;
 		double timeEnd;
 		float energy;
-
 		short region;
 		short xi;
 		short yi;
 		float x;
 		float y;
 		float z;
-		
+
 		Hit() {
 			valid = false;
 			raw = NULL;
@@ -62,8 +56,7 @@ namespace PETSYS {
 
 		GammaPhoton() {
 			valid = false;
-			for(int i = 0; i < maxHits; i++)
-				hits[i] = NULL;
+			for(int i = 0; i < maxHits; i++) hits[i] = NULL;
 		};
 	};
 
@@ -73,21 +66,18 @@ namespace PETSYS {
 		double time;
 		int nPhotons;
 		GammaPhoton *photons[maxPhotons];
-		
+
 		Coincidence() {
 			valid = false;
-			for(int i = 0; i < maxPhotons; i++)
-				photons[i] = NULL;
+			for(int i = 0; i < maxPhotons; i++) photons[i] = NULL;
 		};
 	};
-	
+
 	class EventStream {
-	public:
-		//virtual bool isQDC(unsigned int gChannelID) = 0;
+	  public:
+		// virtual bool isQDC(unsigned int gChannelID) = 0;
 		virtual double getFrequency() = 0;
 		virtual int getTriggerID() = 0;
-
-		
 	};
-}
+}   // namespace PETSYS
 #endif
