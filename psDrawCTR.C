@@ -40,8 +40,8 @@ int psDrawCTR(char const *filePrefix, Int_t channelA = -1, Int_t channelB = -1) 
     // [28,29], [33,41], [34,40], [35,37], [36,39], [38,57], [42,48], [43,49],
     // [44,47], [45,46], [51,60], [52,63], [53,56], [54,55], [58,61], [59,62]]
 	// channels with the same index in the two arrays are coincident pairs to be analyzed for CTR
-	int channelA[32] = {0, 1, 2, 3, 4, 5, 6, 8, 9,16,17,18,19,24,25,26,28,33,34,35,36,38,42,43,44,45,51,52,53,54,58,59};
-	int channelB[32] = {14,7,15,12,27,10,11,13,50,22,20,23,21,31,32,30,29,41,40,37,39,57,48,49,47,46,60,63,56,55,61,62};
+	int chsA[32] = {0, 1, 2, 3, 4, 5, 6, 8, 9,16,17,18,19,24,25,26,28,33,34,35,36,38,42,43,44,45,51,52,53,54,58,59};
+	int chsB[32] = {14,7,15,12,27,10,11,13,50,22,20,23,21,31,32,30,29,41,40,37,39,57,48,49,47,46,60,63,56,55,61,62};
 
 	// histogram for coincidence time difference
 	TH1F *hDelta = new TH1F("hDelta", "Coincidence time difference", 2 * wMax / tBinWidth, -wMax, wMax);
@@ -91,7 +91,7 @@ int psDrawCTR(char const *filePrefix, Int_t channelA = -1, Int_t channelB = -1) 
 		// iterate through indeces of channelA and channelB to find the maximum bin in the 2D histogram hC2
 		printf("Coincident channel pairs:\n");
 		for(int i = 0; i < 32; i++) {
-			printf("[%d,%d] ", channelA[i], channelB[i]);
+			printf("[%d,%d] ", chsA[i], chsB[i]);
 		}
 		printf("\n");
 
