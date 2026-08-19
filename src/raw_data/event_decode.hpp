@@ -4,48 +4,33 @@
 #include <stdint.h>
 #include <string>
 
-namespace PETSYS {       
+namespace PETSYS {
+	class RawEventWord {
+	  public:
+		RawEventWord(uint64_t word): word(word) {};
+		~RawEventWord() {};
 
-class RawEventWord{
+		unsigned getEFine() {
+			unsigned v = word % 1024;
+			v = (v + 27) % 1024;   // rd_clk_en
+			return v;
+		};
 
-public:
-	RawEventWord(uint64_t word) : word(word){};
-	~RawEventWord() {};
-	
-	unsigned getEFine() {
-		unsigned v = word % 1024;
-		v = (v + 27) % 1024;	// rd_clk_en
-		return v;
-	};
+		unsigned getTFine() {
+			unsigned v = (word >> 10) % 1024;
+			v = (v + 27) % 1024;   // rd_clk_en
+			return v;
+		};
 
-	unsigned getTFine() {
-		unsigned v = (word>>10) % 1024;
-		v = (v + 27) % 1024;	// rd_clk_en
-		return v;
-	};
+		unsigned getECoarse() { return (word >> 20) % 1024; };
 
-	unsigned getECoarse() {
-		return (word>>20) % 1024;
-	};
-	
-	unsigned getTCoarse() {
-		return (word>>30) % 1024;
-	};
-	
-	unsigned getTacID() {
-	
-		return (word>>40) % 4;
-	};
-	
-	unsigned getChannelID() {
-	
-		return word>>42;
-	};
-	
-private:
-	uint64_t word;
+		unsigned getTCoarse() { return (word >> 30) % 1024; };
 
-};
+		unsigned getTacID() { return (word >> 40) % 4; };
 
-}
+		unsigned getChannelID() { return word >> 42; };
+	  private:
+		uint64_t word;
+	};
+}   // namespace PETSYS
 #endif

@@ -14,8 +14,7 @@ struct unpacked_event_t {
 	unsigned short eFine;
 };
 
-static object events_as_bytes(SHM_RAW &self, int start, int end)
-{
+static object events_as_bytes(SHM_RAW &self, int start, int end) {
 	auto shm_raw_size = self.getSizeInFrames();
 	int total_events = 0;
 	for(auto ii = start; ii < end; ii++) {
@@ -24,7 +23,7 @@ static object events_as_bytes(SHM_RAW &self, int start, int end)
 	}
 
 	auto buffer_size = total_events * sizeof(unpacked_event_t);
-	unpacked_event_t * buf = (unpacked_event_t *)malloc(buffer_size);
+	unpacked_event_t *buf = (unpacked_event_t *) malloc(buffer_size);
 	unpacked_event_t *p = buf;
 	for(auto ii = start; ii < end; ii++) {
 		auto index = ii % shm_raw_size;
@@ -43,13 +42,12 @@ static object events_as_bytes(SHM_RAW &self, int start, int end)
 		}
 	}
 
-	PyObject* py_buf = PyBytes_FromStringAndSize((char *)buf, buffer_size);
+	PyObject *py_buf = PyBytes_FromStringAndSize((char *) buf, buffer_size);
 	object retval = object(handle<>(py_buf));
 	return retval;
 }
 
-BOOST_PYTHON_MODULE(shm_raw)
-{
+BOOST_PYTHON_MODULE(shm_raw) {
 	class_<SHM_RAW>("SHM_RAW", init<std::string>())
 		.def("getSizeInBytes", &SHM_RAW::getSizeInBytes)
 		.def("getSizeInFrames", &SHM_RAW::getSizeInFrames)
@@ -64,6 +62,5 @@ BOOST_PYTHON_MODULE(shm_raw)
 		.def("getEFine", &SHM_RAW::getEFine)
 		.def("getTacID", &SHM_RAW::getTacID)
 		.def("getChannelID", &SHM_RAW::getChannelID)
-		.def("events_as_bytes", &events_as_bytes, (arg("self"), arg("start"), arg("end")))
-	;
+		.def("events_as_bytes", &events_as_bytes, (arg("self"), arg("start"), arg("end")));
 }
