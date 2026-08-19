@@ -49,7 +49,7 @@ int psDrawCTR(char const *filePrefix, Int_t channelA = -1, Int_t channelB = -1) 
 	TH2F *hC2 = new TH2F("hC2", "C2", N_CHANNELS, 0, N_CHANNELS, N_CHANNELS, 0, N_CHANNELS);
 
 	int minToT = 0;                                                              // minimum ToT to consider for analysis
-	int maxToT = 15;                                                             // maximum ToT to consider for analysis
+	int maxToT = 30;                                                             // maximum ToT to consider for analysis
 	TH1F *hE1 = new TH1F("hE1", "E 1", (maxToT - minToT) * 5, minToT, maxToT);   // histogram for charge spectrum of channel 1
 	TH1F *hE2 = new TH1F("hE2", "E 2", (maxToT - minToT) * 5, minToT, maxToT);   // histogram for charge spectrum of channel 2
 
