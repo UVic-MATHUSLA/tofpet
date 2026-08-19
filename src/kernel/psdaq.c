@@ -9,15 +9,15 @@
 /* GNU General Public License for more details.                         */
 /*                                                                      */
 /************************************************************************/
+#include <linux/cdev.h>
+#include <linux/delay.h>
+#include <linux/device.h>
+#include <linux/fs.h>
+#include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/pci.h>
-#include <linux/fs.h>
 #include <linux/types.h>
-#include <linux/cdev.h>
-#include <linux/device.h>
-#include <linux/kernel.h>
 #include <linux/uaccess.h>
-#include <linux/delay.h>
 #include <linux/version.h>
 
 #include "psdaq.h"
@@ -28,52 +28,36 @@ MODULE_DESCRIPTION("PETsys DAQ driver");
 
 static const int DRIVER_VERSION = 400;
 
-const static struct
-pci_device_id psdaq_pci_id_tbl[] =
-{
-	// { VENDOR_ID, DEVICE_ID, PCI_ANY_ID, PCI_ANY_ID, 0, 0, 0 },
-	{ PCI_DEVICE(0x10EE, 0x7025) },
-	{ 0, }
+const static struct pci_device_id psdaq_pci_id_tbl[] = {
+	{PCI_DEVICE(0x10EE, 0x7025)}, {0, }   // { VENDOR_ID, DEVICE_ID, PCI_ANY_ID, PCI_ANY_ID, 0, 0, 0 }
 };
 
 MODULE_DEVICE_TABLE(pci, psdaq_pci_id_tbl);
 
-static int psdaq_dev_probe( struct pci_dev *, const struct pci_device_id *);
-static void psdaq_dev_remove( struct pci_dev *);
+static int psdaq_dev_probe(struct pci_dev *, const struct pci_device_id *);
+static void psdaq_dev_remove(struct pci_dev *);
 
-static struct
-pci_driver psdaq_driver =
-{
+static struct pci_driver psdaq_driver = {
 	.name = "psdaq",
 	.id_table = psdaq_pci_id_tbl,
 	.probe = psdaq_dev_probe,
-	.remove= psdaq_dev_remove,
+	.remove = psdaq_dev_remove,
 };
 
-static int psdaq_file_open (struct inode *, struct file *);
-static int psdaq_file_close (struct inode *, struct file *);
-static ssize_t psdaq_file_read (struct file *, char *, size_t, loff_t *);
-static ssize_t psdaq_file_write (struct file *, __user const char *, size_t, loff_t *);
+static int psdaq_file_open(struct inode *, struct file *);
+static int psdaq_file_close(struct inode *, struct file *);
+static ssize_t psdaq_file_read(struct file *, char *, size_t, loff_t *);
+static ssize_t psdaq_file_write(struct file *, __user const char *, size_t, loff_t *);
 static long psdaq_ioctl(struct file *, unsigned int, unsigned long);
 
-static struct file_operations psdaq_fops =
-{
-	.owner = THIS_MODULE,
-	.open = psdaq_file_open,
-	.release = psdaq_file_close,
-	.read = psdaq_file_read,
-	.write = psdaq_file_write,
-	.unlocked_ioctl = psdaq_ioctl
-
-};
-
+static struct file_operations psdaq_fops
+	= {.owner = THIS_MODULE, .open = psdaq_file_open, .release = psdaq_file_close, .read = psdaq_file_read, .write = psdaq_file_write, .unlocked_ioctl = psdaq_ioctl};
 
 static int __init psdaq_init(void);
 static void __exit psdaq_exit(void);
 
 module_init(psdaq_init);
 module_exit(psdaq_exit);
-
 
 /* Base Address register */
 struct bar_t {
@@ -83,7 +67,7 @@ struct bar_t {
 
 #define NUM_PARTITION 32
 #define MAX_TLP_SIZE 512
-#define BUF_SIZE 4096*8*NUM_PARTITION
+#define BUF_SIZE 4096 * 8 * NUM_PARTITION
 
 /* Private structure */
 struct psdaq_dev_t {
@@ -99,26 +83,26 @@ struct psdaq_dev_t {
 	size_t dma_rd_pointer;
 	spinlock_t lock;
 };
-#define READ_BAR0_REG(reg) readl(psdaq_dev->bar[0].addr + 4*reg)
-#define WRITE_BAR0_REG(reg, val) writel(val, psdaq_dev->bar[0].addr + 4*reg)
 
+#define READ_BAR0_REG(reg) readl(psdaq_dev->bar[0].addr + 4 * reg)
+#define WRITE_BAR0_REG(reg, val) writel(val, psdaq_dev->bar[0].addr + 4 * reg)
 
 static struct class *psdaq_dev_class;
 static unsigned device_counter = 0;
 
 #if defined(PSOS_UBUNTU)
 
-#if LINUX_VERSION_CODE <= KERNEL_VERSION(6,0,0)
+#if LINUX_VERSION_CODE <= KERNEL_VERSION(6, 0, 0)
 static int psdaq_dev_uevent(struct device *dev, struct kobj_uevent_env *env)
-# else
+#else
 static int psdaq_dev_uevent(const struct device *dev, struct kobj_uevent_env *env)
 #endif
 
 #else
 
-#if LINUX_VERSION_CODE <= KERNEL_VERSION(4,0,0)
+#if LINUX_VERSION_CODE <= KERNEL_VERSION(4, 0, 0)
 static int psdaq_dev_uevent(struct device *dev, struct kobj_uevent_env *env)
-# else
+#else
 static int psdaq_dev_uevent(const struct device *dev, struct kobj_uevent_env *env)
 #endif
 
@@ -128,35 +112,31 @@ static int psdaq_dev_uevent(const struct device *dev, struct kobj_uevent_env *en
 	return 0;
 }
 
-static int __init psdaq_init(void) 
-{
+static int __init psdaq_init(void) {
 	int err;
 
-	
 #if defined(PSOS_RHEL)
-	#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 14, 0)
-		psdaq_dev_class = class_create(THIS_MODULE, "psdaq");
-	#else
-		psdaq_dev_class = class_create("psdaq");
-	#endif
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 14, 0)
+	psdaq_dev_class = class_create(THIS_MODULE, "psdaq");
 #else
-	#if LINUX_VERSION_CODE <= KERNEL_VERSION(6, 4, 0)
-		psdaq_dev_class = class_create(THIS_MODULE, "psdaq");
-	#else 
-		psdaq_dev_class = class_create("psdaq");
-	#endif
+	psdaq_dev_class = class_create("psdaq");
+#endif
+#else
+#if LINUX_VERSION_CODE <= KERNEL_VERSION(6, 4, 0)
+	psdaq_dev_class = class_create(THIS_MODULE, "psdaq");
+#else
+	psdaq_dev_class = class_create("psdaq");
+#endif
 #endif
 
-
-	if (IS_ERR(psdaq_dev_class)) {
+	if(IS_ERR(psdaq_dev_class)) {
 		err = PTR_ERR(psdaq_dev_class);
 		return err;
 	}
 	psdaq_dev_class->dev_uevent = psdaq_dev_uevent;
 
 	err = pci_register_driver(&psdaq_driver);
-	if (err)
-		goto failure_register_pci_driver;
+	if(err) goto failure_register_pci_driver;
 	return 0;
 
 failure_register_pci_driver:
@@ -164,73 +144,64 @@ failure_register_pci_driver:
 	return err;
 }
 
-static void __exit psdaq_exit(void)
-{
+static void __exit psdaq_exit(void) {
 	pci_unregister_driver(&psdaq_driver);
 	class_destroy(psdaq_dev_class);
 }
 
+#define WRITE_BAR0_REG(reg, val) writel(val, psdaq_dev->bar[0].addr + 4 * reg)
 
-#define WRITE_BAR0_REG(reg, val) writel(val, psdaq_dev->bar[0].addr + 4*reg)
-static void psdaq_initcard(struct pci_dev *pdev, struct psdaq_dev_t *psdaq_dev)
-{ 
+static void psdaq_initcard(struct pci_dev *pdev, struct psdaq_dev_t *psdaq_dev) {
 	psdaq_dev->tlp_size = pcie_get_mps(pdev);
 	// Cap TLP size to tested values
-	if(psdaq_dev->tlp_size > MAX_TLP_SIZE) psdaq_dev->tlp_size = MAX_TLP_SIZE;	
+	if(psdaq_dev->tlp_size > MAX_TLP_SIZE) psdaq_dev->tlp_size = MAX_TLP_SIZE;
 
 	psdaq_dev->tlp_count = BUF_SIZE / psdaq_dev->tlp_size;
 
-	WRITE_BAR0_REG(0, 1);                   // Write: DCSR (offset 0) with value of 1 (Reset Device)
-	WRITE_BAR0_REG(0, 0);                   // Write: DCSR (offset 0) with value of 0 (Make Active)
+	WRITE_BAR0_REG(0, 1);   // Write: DCSR (offset 0) with value of 1 (Reset Device)
+	WRITE_BAR0_REG(0, 0);   // Write: DCSR (offset 0) with value of 0 (Make Active)
 
-	WRITE_BAR0_REG(1, 0x00800080);	// Disable DMA and interrupts
+	WRITE_BAR0_REG(1, 0x00800080);   // Disable DMA and interrupts
 
-	WRITE_BAR0_REG(2, psdaq_dev->dma_hwaddr);        // Write: Write DMA TLP Address register with starting address
-	WRITE_BAR0_REG(3, psdaq_dev->tlp_size/4);          // Write: Write DMA TLP Size register with defined default value
-	WRITE_BAR0_REG(4, psdaq_dev->tlp_count);           // Write: Write DMA TLP Count register with defined default value
-	WRITE_BAR0_REG(5, 0x00000000);          // Write: Write DMA TLP Pattern register with default value (0x0)
-
+	WRITE_BAR0_REG(2, psdaq_dev->dma_hwaddr);     // Write: Write DMA TLP Address register with starting address
+	WRITE_BAR0_REG(3, psdaq_dev->tlp_size / 4);   // Write: Write DMA TLP Size register with defined default value
+	WRITE_BAR0_REG(4, psdaq_dev->tlp_count);      // Write: Write DMA TLP Count register with defined default value
+	WRITE_BAR0_REG(5, 0x00000000);                // Write: Write DMA TLP Pattern register with default value (0x0)
 
 	// Setting up the circular buffer
-	WRITE_BAR0_REG(25, 0x40000000 | (psdaq_dev->tlp_count/NUM_PARTITION));	// Disable DMA and interrupts; Buffer divided into n partitions
-	WRITE_BAR0_REG(26, psdaq_dev->tlp_size/4);			// DMA TLP Size
-	WRITE_BAR0_REG(27, psdaq_dev->dma_hwaddr);        		// DMA starting address
-	WRITE_BAR0_REG(28, NUM_PARTITION);        			// number of partitions
-	WRITE_BAR0_REG(29, 0);        					// reseting read pointer
+	WRITE_BAR0_REG(25, 0x40000000 | (psdaq_dev->tlp_count / NUM_PARTITION));   // Disable DMA and interrupts; Buffer divided into n partitions
+	WRITE_BAR0_REG(26, psdaq_dev->tlp_size / 4);                               // DMA TLP Size
+	WRITE_BAR0_REG(27, psdaq_dev->dma_hwaddr);                                 // DMA starting address
+	WRITE_BAR0_REG(28, NUM_PARTITION);                                         // number of partitions
+	WRITE_BAR0_REG(29, 0);                                                     // reseting read pointer
 	spin_lock_init(&psdaq_dev->lock);
-	
 }
 
-
-static int psdaq_dev_probe( struct pci_dev *pdev,  const struct pci_device_id *id)
-{
+static int psdaq_dev_probe(struct pci_dev *pdev, const struct pci_device_id *id) {
 	int err = 0, i;
 	int mem_bars;
 	struct psdaq_dev_t *psdaq_dev;
 	struct device *dev;
 
-	printk(KERN_INFO"psdaq_dev_probe called\n");
+	printk(KERN_INFO "psdaq_dev_probe called\n");
 
 	psdaq_dev = kmalloc(sizeof(struct psdaq_dev_t), GFP_KERNEL);
-	if (!psdaq_dev) {
+	if(!psdaq_dev) {
 		err = -ENOMEM;
 		goto failure_kmalloc;
 	}
-	
+
 	// Initialize to sensible values
-	for (i = 0; i < 2; i++) {
+	for(i = 0; i < 2; i++) {
 		psdaq_dev->bar[i].addr = NULL;
 		psdaq_dev->bar[i].len = 0;
 	}
-	
+
 	// Add device number
 	psdaq_dev->dev_index = device_counter;
 
 	err = pci_enable_device_mem(pdev);
-	if (err)
-		goto failure_pci_enable;
-	
-	
+	if(err) goto failure_pci_enable;
 	err = dma_set_mask(&pdev->dev, DMA_BIT_MASK(32));
 	if(err) goto failure_dma_mask;
 	err = dma_set_coherent_mask(&pdev->dev, DMA_BIT_MASK(32));
@@ -239,11 +210,9 @@ static int psdaq_dev_probe( struct pci_dev *pdev,  const struct pci_device_id *i
 	/* Request only the BARs that contain memory regions */
 	mem_bars = pci_select_bars(pdev, IORESOURCE_MEM);
 	err = pci_request_selected_regions(pdev, mem_bars, "psdaq");
-	if (err)
-		goto failure_pci_regions;
-	
-	
-	for (i = 0; i < 2; i++) {
+	if(err) goto failure_pci_regions;
+
+	for(i = 0; i < 2; i++) {
 		void *addr = pci_ioremap_bar(pdev, i);
 		if(IS_ERR(addr)) {
 			err = PTR_ERR(addr);
@@ -268,9 +237,7 @@ static int psdaq_dev_probe( struct pci_dev *pdev,  const struct pci_device_id *i
 
 	/* Get device number range */
 	err = alloc_chrdev_region(&psdaq_dev->dev, psdaq_dev->dev_index, 1, "psdaq");
-	if (err)
-		goto failure_alloc_chrdev_region;
-
+	if(err) goto failure_alloc_chrdev_region;
 
 	/* connect cdev with file operations */
 	cdev_init(&psdaq_dev->cdev, &psdaq_fops);
@@ -278,16 +245,11 @@ static int psdaq_dev_probe( struct pci_dev *pdev,  const struct pci_device_id *i
 
 	/* add major/min range to cdev */
 	err = cdev_add(&psdaq_dev->cdev, psdaq_dev->dev, 1);
-	if (err)
-		goto failure_cdev_add;
+	if(err) goto failure_cdev_add;
 
-	dev = device_create(psdaq_dev_class, &pdev->dev,
-				psdaq_dev->dev,
-				NULL,
-				"psdaq%d",
-				psdaq_dev->dev_index);
+	dev = device_create(psdaq_dev_class, &pdev->dev, psdaq_dev->dev, NULL, "psdaq%d", psdaq_dev->dev_index);
 
-	if (IS_ERR(dev)) {
+	if(IS_ERR(dev)) {
 		err = PTR_ERR(dev);
 		goto failure_device_create;
 	}
@@ -308,13 +270,11 @@ failure_alloc_chrdev_region:
 	dma_free_coherent(&pdev->dev, BUF_SIZE, psdaq_dev->dma_buf, psdaq_dev->dma_hwaddr);
 
 failure_dma_allocation:
-	for (i = 0; i < 2; i++)
-		if (psdaq_dev->bar[i].len)
-			iounmap(psdaq_dev->bar[i].addr);
+	for(i = 0; i < 2; i++)
+		if(psdaq_dev->bar[i].len) iounmap(psdaq_dev->bar[i].addr);
 
 failure_ioremap:
-	pci_release_selected_regions(pdev,
-				     pci_select_bars(pdev, IORESOURCE_MEM));
+	pci_release_selected_regions(pdev, pci_select_bars(pdev, IORESOURCE_MEM));
 
 failure_pci_regions:
 failure_dma_mask:
@@ -327,13 +287,12 @@ failure_kmalloc:
 	return err;
 }
 
-static void psdaq_dev_remove( struct pci_dev *pdev)
-{
+static void psdaq_dev_remove(struct pci_dev *pdev) {
 	int i;
 	struct psdaq_dev_t *psdaq_dev = pci_get_drvdata(pdev);
-	
+
 	spin_lock(&psdaq_dev->lock);
-	WRITE_BAR0_REG(25, 0x40000000 | (psdaq_dev->tlp_count/NUM_PARTITION));	// Stop DMA
+	WRITE_BAR0_REG(25, 0x40000000 | (psdaq_dev->tlp_count / NUM_PARTITION));   // Stop DMA
 	spin_unlock(&psdaq_dev->lock);
 
 	device_destroy(psdaq_dev_class, psdaq_dev->dev);
@@ -342,35 +301,26 @@ static void psdaq_dev_remove( struct pci_dev *pdev)
 
 	dma_free_coherent(&pdev->dev, BUF_SIZE, psdaq_dev->dma_buf, psdaq_dev->dma_hwaddr);
 
-	for (i = 0; i < 2; i++)
-		if (psdaq_dev->bar[i].len)
-			iounmap(psdaq_dev->bar[i].addr);
+	for(i = 0; i < 2; i++)
+		if(psdaq_dev->bar[i].len) iounmap(psdaq_dev->bar[i].addr);
 
 	pci_release_selected_regions(pdev, pci_select_bars(pdev, IORESOURCE_MEM));
 	pci_disable_device(pdev);
 	kfree(psdaq_dev);
 }
 
-static int psdaq_file_open (struct inode *inode, struct file *file)
-{
+static int psdaq_file_open(struct inode *inode, struct file *file) {
 	struct psdaq_dev_t *psdaq_dev = container_of(inode->i_cdev, struct psdaq_dev_t, cdev);
 	file->private_data = psdaq_dev;
 	return 0;
 }
 
+static int psdaq_file_close(struct inode *inode, struct file *file) { return 0; }
 
-static int psdaq_file_close (struct inode *inode, struct file *file)
-{
-	return 0;
-}
-
-
-static ssize_t psdaq_file_read (struct file *file, char *buf, size_t count, loff_t *off)
-{
+static ssize_t psdaq_file_read(struct file *file, char *buf, size_t count, loff_t *off) {
 	struct psdaq_dev_t *psdaq_dev = file->private_data;
 
 	int err;
-
 	size_t block_size, offset, n;
 	long int i;
 	uint64_t *frame;
@@ -378,16 +328,13 @@ static ssize_t psdaq_file_read (struct file *file, char *buf, size_t count, loff
 	unsigned nwords;
 
 	spin_lock(&psdaq_dev->lock);
-	WRITE_BAR0_REG(25, 0xC0000000 | (psdaq_dev->tlp_count/NUM_PARTITION));	// Start DMA
+	WRITE_BAR0_REG(25, 0xC0000000 | (psdaq_dev->tlp_count / NUM_PARTITION));   // Start DMA
 	spin_unlock(&psdaq_dev->lock);
-	block_size = psdaq_dev->tlp_count/NUM_PARTITION * psdaq_dev->tlp_size;
+	block_size = psdaq_dev->tlp_count / NUM_PARTITION * psdaq_dev->tlp_size;
 
 	n = 0;
 	while(n < count) {
-
-		if((n + BUF_SIZE/NUM_PARTITION) > count) {
-			break;
-		}
+		if((n + BUF_SIZE / NUM_PARTITION) > count) { break; }
 
 		// If the DMA buffer is empty wait up to ~100 us in 10 us steps
 		i = 0;
@@ -398,74 +345,60 @@ static ssize_t psdaq_file_read (struct file *file, char *buf, size_t count, loff
 			spin_lock(&psdaq_dev->lock);
 			psdaq_dev->dma_wr_pointer = READ_BAR0_REG(29);
 			spin_unlock(&psdaq_dev->lock);
-			
-			if(psdaq_dev->dma_wr_pointer == psdaq_dev->dma_rd_pointer) {
-				udelay(10);
-			}
-			
+
+			if(psdaq_dev->dma_wr_pointer == psdaq_dev->dma_rd_pointer) { udelay(10); }
 		}
-	
+
 		offset = psdaq_dev->dma_rd_pointer % NUM_PARTITION;
-		frame = (uint64_t *)((psdaq_dev->dma_buf)+(offset*BUF_SIZE/NUM_PARTITION));
+		frame = (uint64_t *) ((psdaq_dev->dma_buf) + (offset * BUF_SIZE / NUM_PARTITION));
 
 		header = frame[0];
 		nwords = (header >> 36) & 0x7FFF;
 
-		err = copy_to_user(buf+n, (psdaq_dev->dma_buf)+(offset*BUF_SIZE/NUM_PARTITION), nwords*sizeof(uint64_t));
+		err = copy_to_user(buf + n, (psdaq_dev->dma_buf) + (offset * BUF_SIZE / NUM_PARTITION), nwords * sizeof(uint64_t));
 		if(err) goto handle_fault;
-		
-		psdaq_dev->dma_rd_pointer = (psdaq_dev->dma_rd_pointer + 1) % (2*NUM_PARTITION);
-		n += nwords*sizeof(uint64_t);		
+
+		psdaq_dev->dma_rd_pointer = (psdaq_dev->dma_rd_pointer + 1) % (2 * NUM_PARTITION);
+		n += nwords * sizeof(uint64_t);
 
 		// read all partitions already
-		if(psdaq_dev->dma_wr_pointer == psdaq_dev->dma_rd_pointer) {
-			break;
-		}
-
+		if(psdaq_dev->dma_wr_pointer == psdaq_dev->dma_rd_pointer) { break; }
 	}
 	spin_lock(&psdaq_dev->lock);
 	WRITE_BAR0_REG(29, psdaq_dev->dma_rd_pointer);
 	spin_unlock(&psdaq_dev->lock);
 	return n;
 
-
 handle_fault:
 	spin_lock(&psdaq_dev->lock);
-	WRITE_BAR0_REG(25, 0x40000000 | (psdaq_dev->tlp_count/NUM_PARTITION));	// Stop DMA
+	WRITE_BAR0_REG(25, 0x40000000 | (psdaq_dev->tlp_count / NUM_PARTITION));   // Stop DMA
 	WRITE_BAR0_REG(29, psdaq_dev->dma_rd_pointer);
 	spin_unlock(&psdaq_dev->lock);
 	return -EFAULT;
-	
 }
 
-static ssize_t psdaq_file_write (struct file *file, __user const char *buf, size_t count, loff_t *off)
-{
-	return -EINVAL;
-}
+static ssize_t psdaq_file_write(struct file *file, __user const char *buf, size_t count, loff_t *off) { return -EINVAL; }
 
-static long  psdaq_ioctl(struct file *file, unsigned int request, unsigned long argp)
-{
+static long psdaq_ioctl(struct file *file, unsigned int request, unsigned long argp) {
 	struct ioctl_reg_t ioctl_reg;
-	
 	struct psdaq_dev_t *psdaq_dev = file->private_data;
-	
+
 	int err;
 	if(request == PSDAQ_IOCTL_READ_REGISTER) {
-		err = copy_from_user(&ioctl_reg, (struct ioctl_reg_t *)argp, sizeof(struct ioctl_reg_t));
+		err = copy_from_user(&ioctl_reg, (struct ioctl_reg_t *) argp, sizeof(struct ioctl_reg_t));
 		if(err > 0) return -EFAULT;
-		
+
 		spin_lock(&psdaq_dev->lock);
 		ioctl_reg.value = readl(psdaq_dev->bar[1].addr + ioctl_reg.offset);
 		spin_unlock(&psdaq_dev->lock);
-		
-		err = copy_to_user((struct ioctl_reg_t *)argp, &ioctl_reg, sizeof(struct ioctl_reg_t));
+
+		err = copy_to_user((struct ioctl_reg_t *) argp, &ioctl_reg, sizeof(struct ioctl_reg_t));
 		if(err > 0) return -EFAULT;
-		
+
 		return 0;
-		
 	}
 	else if(request == PSDAQ_IOCTL_WRITE_REGISTER) {
-		err = copy_from_user(&ioctl_reg, (struct ioctl_reg_t *)argp, sizeof(struct ioctl_reg_t));
+		err = copy_from_user(&ioctl_reg, (struct ioctl_reg_t *) argp, sizeof(struct ioctl_reg_t));
 		if(err > 0) return -EFAULT;
 
 		spin_lock(&psdaq_dev->lock);
@@ -473,20 +406,14 @@ static long  psdaq_ioctl(struct file *file, unsigned int request, unsigned long 
 		spin_unlock(&psdaq_dev->lock);
 		return 0;
 	}
-
-	else if (request == PSDAQ_IOCTL_READ_VERSION) {
+	else if(request == PSDAQ_IOCTL_READ_VERSION) {
 		// Return driver version
 		ioctl_reg.value = DRIVER_VERSION;
 
-		err = copy_to_user((struct ioctl_reg_t *)argp, &ioctl_reg, sizeof(struct ioctl_reg_t));
+		err = copy_to_user((struct ioctl_reg_t *) argp, &ioctl_reg, sizeof(struct ioctl_reg_t));
 		if(err > 0) return -EFAULT;
 
 		return 0;
 	}
-
 	return -EINVAL;
 }
-
-
-
-
