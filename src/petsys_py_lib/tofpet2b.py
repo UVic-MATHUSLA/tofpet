@@ -187,36 +187,34 @@ class AsicChannelConfig(bitarray):
 			"trigger_mode_2_b"	: [ n for n in nrange(33, 36) ],
 			"branch_en_eq"		: [ n for n in nrange(36, 37) ],
 			"branch_en_t"		: [ n for n in nrange(37, 38) ],
-			"qdc_mode"		: [ n for n in nrange(38, 39) ],
+			"qdc_mode"			: [ n for n in nrange(38, 39) ],
 			"trigger_b_latched"	: [ n for n in nrange(39, 40) ],
 			"min_intg_time"		: [ n for n in nrange(40, 47) ],
 			"max_intg_time"		: [ n for n in nrange(47, 54) ],
-			"output_en"		: [ n for n in nrange(54, 56) ],
-			"qtx2_en"		: [ n for n in nrange(56, 57) ],
-
+			"output_en"			: [ n for n in nrange(54, 56) ],
+			"qtx2_en"			: [ n for n in nrange(56, 57) ],
 			"baseline_t"		: [ n for n in nrange(57, 63) ],
-			"vth_t1"		: [ n for n in nrange(63, 69) ],
-			"vth_t2"		: [ n for n in nrange(69, 75) ],
-			"vth_e"			: [ n for n in nrange(75, 81) ],
+			"vth_t1"			: [ n for n in nrange(63, 69) ],
+			"vth_t2"			: [ n for n in nrange(69, 75) ],
+			"vth_e"				: [ n for n in nrange(75, 81) ],
 			"baseline_e"		: [ n for n in nrange(81, 84) ],
-			"fe_delay"		: [84, 88, 87, 85, 86],#[ n for n in nrange(84, 89) ],
+			"fe_delay"			: [84, 88, 87, 85, 86],#[ n for n in nrange(84, 89) ],
 			"postamp_gain_t"	: [ n for n in range(89, 91) ],
 			"postamp_gain_e"	: [ n for n in range(91, 93) ],
 			"postamp_sh_e"		: [ n for n in nrange(93, 95) ],
-			"intg_en"		: [ n for n in nrange(95, 96) ],
+			"intg_en"			: [ n for n in nrange(95, 96) ],
 			"intg_signal_en"	: [ n for n in nrange(96, 97) ],
-			"att"			: [ n for n in nrange(97, 100) ],
+			"att"				: [ n for n in nrange(97, 100) ],
 			"tdc_current_t"		: [ n for n in nrange(100, 104) ],
 			"tdc_current_e"		: [ n for n in nrange(104, 108) ],
-			"fe_tp_en"		: [ n for n in nrange(108, 110) ],
+			"fe_tp_en"			: [ n for n in nrange(108, 110) ],
 			"ch63_obuf_msb"		: [ n for n in nrange(110, 111) ],
-		#		"tdc_delay"		: [ n for n in nrange(110, 114) ],
+		#	"tdc_delay"			: [ n for n in nrange(110, 114) ],
 			"integ_source_sw"	: [ n for n in nrange(111,112)  ],
 			"t1_hysteresis"		: [ n for n in nrange(115, 118) ],
 			"t2_hysteresis"		: [ n for n in nrange(118, 121) ],
 			"e_hysteresis"		: [ n for n in nrange(121, 124) ],
 			"hysteresis_en_n"	: [ n for n in nrange(124, 125) ]
-
 		}
 
 		if initial is not None:
@@ -229,13 +227,56 @@ class AsicChannelConfig(bitarray):
 
 		# Disable shaping by default
 		self.setValue("postamp_sh_e", 0b00)
+
+		# Trigger modes:
+		# T1, T2, E with fast dark count rejection:
+		#	trigger_mode_2_t = 0b01
+		#	trigger_mode_2_e = 0b010
+		#	trigger_mode_2_q = 0b01
+		#	trigger_mode_2_b = 0b101
+
+		# Single Threshold T1
+		#	trigger_mode_2_t = 0b00
+		#	trigger_mode_2_e = 0b000
+		#	trigger_mode_2_q = 0b00
+		#	trigger_mode_2_b = 0b000
+
+		# Single Threshold E
+		#	trigger_mode_2_t = 0b11
+		#	trigger_mode_2_e = 0b010
+		#	trigger_mode_2_q = 0b10
+		#	trigger_mode_2_b = 0b010
+
+		# Dual Threshold T1, T2
+		#	trigger_mode_2_t = 0b00
+		#	trigger_mode_2_e = 0b001
+		#	trigger_mode_2_q = 0b00
+		#	trigger_mode_2_b = 0b011
+
+		# Dual Threshold T1, T2 with fast dark count rejection
+		#	trigger_mode_2_t = 0b01
+		#	trigger_mode_2_e = 0b001
+		#	trigger_mode_2_q = 0b01
+		#	trigger_mode_2_b = 0b011
+
+		# Dual Threshold T1, E
+		#	trigger_mode_2_t = 0b00
+		#	trigger_mode_2_e = 0b010
+		#	trigger_mode_2_q = 0b00
+		#	trigger_mode_2_b = 0b100
+
+		# Fe Delay:
+		#	0b10000: delay line bypassed (off)
+		#	0b01101: 3ns
+		#	0b01110: 6ns
+		#	0b01111: 8ns
 		
 		# Default triggering
-		self.setValue("fe_delay", 0b01011)	# Maximum T1 delay
-		self.setValue("trigger_mode_2_t", 0b01)	# T1'delayed and T2
-		self.setValue("trigger_mode_2_e", 0b010)# not E
-		self.setValue("trigger_mode_2_q", 0b01)	# T2
-		self.setValue("trigger_mode_2_b", 0b101)# T1 or T2 or E
+		self.setValue("fe_delay", 0b10000)		# 3ns T1 delay
+		self.setValue("trigger_mode_2_t", 0b00)	# T1'delayed and T2
+		self.setValue("trigger_mode_2_e", 0b000)# not E
+		self.setValue("trigger_mode_2_q", 0b00)	# T2
+		self.setValue("trigger_mode_2_b", 0b000)# T1 or T2 or E
 		
 		# Default integration windows: fixed 300 ns
 		self.setValue("min_intg_time", 15)
