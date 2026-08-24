@@ -15,5 +15,6 @@ build/*
 
 *.tofpetVenv
 *.clang-format
+*.DS_Store
 
 commands.txt
