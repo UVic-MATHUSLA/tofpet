@@ -281,10 +281,10 @@ class AsicChannelConfig(bitarray):
 		
 		# Default triggering
 		self.setValue("fe_delay", 0b10000)	# Maximum T1 delay
-		self.setValue("trigger_mode_2_t", 0b00)	# T1'delayed and T2
-		self.setValue("trigger_mode_2_e", 0b000)# not E
-		self.setValue("trigger_mode_2_q", 0b00)	# T2
-		self.setValue("trigger_mode_2_b", 0b000)# T1 or T2 or E
+		self.setValue("trigger_mode_2_t", 0b11)	# T1'delayed and T2
+		self.setValue("trigger_mode_2_e", 0b010)# not E
+		self.setValue("trigger_mode_2_q", 0b10)	# T2
+		self.setValue("trigger_mode_2_b", 0b010)# T1 or T2 or E
 		
 		# Default integration windows: fixed ~300 ns
 		self.setValue("min_intg_time", 34)
