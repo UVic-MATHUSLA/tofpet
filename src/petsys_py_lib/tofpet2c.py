@@ -249,12 +249,6 @@ class AsicChannelConfig(bitarray):
 		#	trigger_mode_2_q = 0b00
 		#	trigger_mode_2_b = 0b000
 
-		# Single Threshold E
-		#	trigger_mode_2_t = 0b11
-		#	trigger_mode_2_e = 0b010
-		#	trigger_mode_2_q = 0b10
-		#	trigger_mode_2_b = 0b010
-
 		# Dual Threshold T1, T2
 		#	trigger_mode_2_t = 0b00
 		#	trigger_mode_2_e = 0b001
@@ -267,24 +261,18 @@ class AsicChannelConfig(bitarray):
 		#	trigger_mode_2_q = 0b01
 		#	trigger_mode_2_b = 0b011
 
-		# Dual Threshold T1, E
-		#	trigger_mode_2_t = 0b00
-		#	trigger_mode_2_e = 0b010
-		#	trigger_mode_2_q = 0b00
-		#	trigger_mode_2_b = 0b100
-
+		# T1, T2 with fast dark count rejection
+		self.setValue("fe_delay", 0b01111)      # 8ns T1 delay
+		self.setValue("trigger_mode_2_t", 0b01)
+		self.setValue("trigger_mode_2_e", 0b001)
+		self.setValue("trigger_mode_2_q", 0b01)
+		self.setValue("trigger_mode_2_b", 0b011)
+		
 		# Fe Delay:
 		#	0b10000: delay line bypassed (off)
 		#	0b01101: 3ns
 		#	0b01110: 6ns
 		#	0b01111: 8ns
-		
-		# Default triggering
-		self.setValue("fe_delay", 0b10000)	# Maximum T1 delay
-		self.setValue("trigger_mode_2_t", 0b00)	# T1'delayed and T2
-		self.setValue("trigger_mode_2_e", 0b001)# not E
-		self.setValue("trigger_mode_2_q", 0b00)	# T2
-		self.setValue("trigger_mode_2_b", 0b011)# T1 or T2 or E
 		
 		# Default integration windows: fixed ~300 ns
 		self.setValue("min_intg_time", 34)
