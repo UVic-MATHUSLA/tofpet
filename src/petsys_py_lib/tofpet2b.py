@@ -254,11 +254,11 @@ class AsicChannelConfig(bitarray):
 		#	trigger_mode_2_b = 0b011
 		
 		# T1, T2 with fast dark count rejection
-		self.setValue("fe_delay", 0b10000)      # 8ns T1 delay
-		self.setValue("trigger_mode_2_t", 0b00)
-		self.setValue("trigger_mode_2_e", 0b000)
-		self.setValue("trigger_mode_2_q", 0b00)
-		self.setValue("trigger_mode_2_b", 0b000)
+		self.setValue("fe_delay", 0b01111)      # 8ns T1 delay
+		self.setValue("trigger_mode_2_t", 0b01)
+		self.setValue("trigger_mode_2_e", 0b001)
+		self.setValue("trigger_mode_2_q", 0b01)
+		self.setValue("trigger_mode_2_b", 0b011)
 		
 		# Fe Delay:
 		#	0b10000: delay line bypassed (off)
