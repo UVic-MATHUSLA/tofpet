@@ -20,7 +20,7 @@ EventBuffer<Hit> *ProcessHit::handleEvents(EventBuffer<RawHit> *inBuffer) {
 	bool useEnergyCal = systemConfig->useEnergyCalibration();
 	bool useTimeOffsetCal = systemConfig->useTimeOffsetCalibration();
 	bool useXYZ = systemConfig->useXYZ();
-	// intf("%d\n", N);
+
 	u_int64_t lReceived = 0;
 	u_int64_t lReceivedInvalid = 0;
 	u_int64_t lTDCCalibrationMissing = 0;
