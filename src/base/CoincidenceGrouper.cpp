@@ -70,9 +70,8 @@ void CoincidenceGrouper::report() {
 	fprintf(stderr, ">> CoincidenceGrouper report\n");
 	fprintf(stderr, "   events passed:\n");
 	fprintf(stderr, "   %13lu \n", nPrompts);
-	fprintf(stderr, "   %13lu (%4.1f%%) with photopeak events\n", nCoincPhotopeak, 100.0 * nCoincPhotopeak / nPrompts);
 	fprintf(stderr, "   events rejected:\n");
-	fprintf(stderr, "   %13lu (%4.1f%%) with invalid regions\n", nPromptsRegion, 100.0 * nPromptsRegion / nPrompts);
-	fprintf(stderr, "   %13lu (%4.1f%%) with invalid times\n", nPromptsTime, 100.0 * nPromptsTime / nPrompts);
+	fprintf(stderr, "   %13lu with invalid regions\n", nPromptsRegion);
+	fprintf(stderr, "   %13lu with invalid times\n", nPromptsTime);
 	UnorderedEventHandler<GammaPhoton, Coincidence>::report();
 }
