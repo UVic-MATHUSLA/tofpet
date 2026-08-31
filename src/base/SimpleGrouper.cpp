@@ -172,7 +172,7 @@ void SimpleGrouper::report() {
 		float fraction = nPhotonsHits[i] / ((float) nPhotonsFound);
 		if(fraction > 0.05) { fprintf(stderr, "   %13lu (%4.1f%%) with %d hits\n", nPhotonsHits[i], 100.0 * fraction, i + 1); }
 	}
-	fprintf(stderr, "   %4.1f hits/photon\n", float(nHitsReceived) / nPhotonsFound);
+	fprintf(stderr, "   %13.1f hits/photon\n", float(nHitsReceived) / nPhotonsFound);
 	fprintf(stderr, "   photons rejected:\n");
 	fprintf(stderr, "   %13lu (%4.1f%%) with more than %d hits\n", nPhotonsHitsOverflow, 100.0 * nPhotonsHitsOverflow / nPhotonsFound, maxHits);
 	fprintf(stderr, "   %13lu (%4.1f%%) with less than %d hits\n", nPhotonsHitsUnderflow, 100.0 * nPhotonsHitsUnderflow / nPhotonsFound, minHits);

@@ -18,14 +18,15 @@ EventBuffer<Coincidence> *CoincidenceGrouper::handleEvents(EventBuffer<GammaPhot
 	long long tMin = inBuffer->getTMin() * (long long) Tps;   // Get minimum time from input buffer and convert to ps
 	unsigned N = inBuffer->getSize();                         // Get number of events in input buffer
 	EventBuffer<Coincidence> *outBuffer = new EventBuffer<Coincidence>(N, inBuffer);   // Output buffer with same size as input buffer
+	u_int64_t lPhotonsReceived = 0;  // Number of photons received
 	u_int64_t lPrompts = 0;          // Number of prompt coincidences found
 	u_int64_t lPromptsRegion = 0;    // Number of invalid region prompt coincidences found
 	u_int64_t lPromptsTime = 0;      // Number of invalid time prompt coincidences found
 	u_int64_t lCoincPhotopeak = 0;   // Number of coincidences that are photopeak events
-	
 
 	// Loop through each photon in input buffer to find coincidences with other photons based on time and region
 	for(unsigned i = 0; i < N; i++) {
+		lPhotonsReceived++;
 		GammaPhoton &photon1 = inBuffer->get(i);   // Get current photon from input buffer
 		// Loop through remaining photons in input buffer to find coincidences with current photon
 		for(unsigned j = i + 1; j < N; j++) {
@@ -54,6 +55,7 @@ EventBuffer<Coincidence> *CoincidenceGrouper::handleEvents(EventBuffer<GammaPhot
 			}
 		}
 	}
+	atomicAdd(nPhotonsReceived, lPhotonsReceived);
 	atomicAdd(nPrompts, lPrompts);
 	atomicAdd(nPromptsRegion, lPromptsRegion);
 	atomicAdd(nPromptsTime, lPromptsTime);
@@ -68,10 +70,9 @@ void CoincidenceGrouper::resetCounters() {
 
 void CoincidenceGrouper::report() {
 	fprintf(stderr, ">> CoincidenceGrouper report\n");
-	fprintf(stderr, "   events passed:\n");
+	fprintf(stderr, "   photons received:\n");
+	fprintf(stderr, "   %13lu \n", nPhotonsReceived);
+	fprintf(stderr, "   coincident photons found:\n");
 	fprintf(stderr, "   %13lu \n", nPrompts);
-	fprintf(stderr, "   events rejected:\n");
-	fprintf(stderr, "   %13lu with invalid regions\n", nPromptsRegion);
-	fprintf(stderr, "   %13lu with invalid times\n", nPromptsTime);
 	UnorderedEventHandler<GammaPhoton, Coincidence>::report();
 }

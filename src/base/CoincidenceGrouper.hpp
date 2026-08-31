@@ -16,6 +16,7 @@ namespace PETSYS {
 	  private:
 		virtual EventBuffer<Coincidence> *handleEvents(EventBuffer<GammaPhoton> *inBuffer);
 		SystemConfig *systemConfig;
+		u_int64_t nPhotonsReceived;
 		u_int64_t nPrompts;
 		u_int64_t nPromptsRegion;
 		u_int64_t nPromptsTime;

@@ -44,13 +44,11 @@ RawReader::RawReader(): dataFile(-1), indexFile(NULL) {
 RawReader::~RawReader() {
 	delete[] dataFileBuffer;
 	close(dataFile);
-
 	if(indexFile != NULL) fclose(indexFile);
 }
 
 RawReader *RawReader::openFile(const char *fnPrefix, timeref_t tb) {
 	RawReader *reader = new RawReader();
-
 	char fName[1024];
 
 	// Try to open temp index file
@@ -66,7 +64,6 @@ RawReader *RawReader::openFile(const char *fnPrefix, timeref_t tb) {
 			fprintf(stderr, "Could not open '%s' for reading: %s\n", fName, strerror(errno));
 			exit(1);
 		}
-
 		reader->indexIsTemp = false;
 	}
 
@@ -76,7 +73,6 @@ RawReader *RawReader::openFile(const char *fnPrefix, timeref_t tb) {
 		fprintf(stderr, "Could not open '%s' for reading: %s\n", fName, strerror(errno));
 		exit(1);
 	}
-
 	uint64_t header[8];
 	ssize_t r = read(reader->dataFile, (void *) header, sizeof(uint64_t) * 8);
 	if(r < 1) {
@@ -117,7 +113,6 @@ RawReader *RawReader::openFile(const char *fnPrefix, timeref_t tb) {
 	else {
 		for(unsigned long gChannelID = 0; gChannelID < MAX_NUMBER_CHANNELS; gChannelID++) reader->qdcMode[gChannelID] = (header[0] & 0x100000000UL) != 0;
 	}
-
 	uint32_t systemFrequency = header[0] & 0xFFFFFFFFUL;
 	memcpy((void *) &(reader->daqSynchronizationEpoch), &header[1], sizeof(double));
 	reader->daqSynchronizationEpoch *= systemFrequency;
@@ -161,12 +156,10 @@ int RawReader::readFromDataFile(char *buf, int count) {
 					// We're not in follow mode (any more)
 					// Make one mode attempt since we may have switched from follow to normal mode
 					// after the previous read attempt
-
 					r = read(dataFile, dataFileBuffer, dataFileBufferSize);
 					if(r < 0) { return -1; }
 				}
 			}
-
 			dataFileBufferPtr = dataFileBuffer;
 			dataFileBufferEnd = dataFileBuffer + r;
 
@@ -195,7 +188,6 @@ bool RawReader::getNextStep() {
 		int r = fscanf(indexFile, "%llu\t%llu\t%llu\t%*u\t%f\t%f\n", &stepBegin, &stepEnd, &stepFirstFrameID, &stepValue1, &stepValue2);
 		if(r == 5) return true;
 	}
-
 	else {
 		while(fscanf(indexFile, "%f\t", &stepValue1) < 1);
 		while(fscanf(indexFile, "%f\t", &stepValue2) < 1);
@@ -205,7 +197,6 @@ bool RawReader::getNextStep() {
 
 		if(stepBegin < ULLONG_MAX) return true;
 	}
-
 	return false;
 }
 
@@ -218,7 +209,6 @@ unsigned long long RawReader::getStepBegin() { return stepBegin; }
 
 unsigned long long RawReader::getStepEnd() {
 	if(stepEnd < ULLONG_MAX) return stepEnd;
-
 	if(!indexIsTemp) return stepEnd;
 
 	unsigned long long readValue;
@@ -279,10 +269,8 @@ void RawReader::processStep(bool verbose, EventSink<RawHit> *sink) {
 		// Account skipped frames
 		if(frameID != lastFrameID + 1) {
 			int skippedFrames = (frameID - lastFrameID) - 1;
-
 			// We have skipped frames...
 			nFrames += skippedFrames;
-
 			if(lastFrameWasLost0) {
 				// ... and they indicate lost frames
 				nFramesLost0 += skippedFrames;
@@ -295,7 +283,6 @@ void RawReader::processStep(bool verbose, EventSink<RawHit> *sink) {
 		// Account frames with lost data
 		if(frameLost && (N == 0)) nFramesLost0 += 1;
 		if(frameLost && (N != 0)) nFramesLostN += 1;
-
 		if(frameLost) nEventsSomeLost += N;
 		else nEventsNoLost += N;
 
@@ -339,22 +326,20 @@ void RawReader::processStep(bool verbose, EventSink<RawHit> *sink) {
 		pool->queueTask(outBuffer, mysink);
 		outBuffer = NULL;
 	}
-
 	pool->completeQueue();
 	delete pool;
 
 	mysink->finish();
 	if(verbose) {
 		fprintf(stderr, ">> RawReader report\n");
-		fprintf(stderr, "   data frames:\n%13lld total\n", nFrames);
+		fprintf(stderr, "   data frames total:\n%13lld\n", nFrames);
 		fprintf(stderr, "   %13lld (%4.1f%%) were missing all data\n", nFramesLost0, 100.0 * nFramesLost0 / (nFrames));
 		fprintf(stderr, "   %13lld (%4.1f%%) were missing some data\n", nFramesLostN, 100.0 * nFramesLostN / (nFrames));
-		fprintf(stderr, "   events total:\n%13lld\n", nEventsNoLost + nEventsSomeLost);
+		fprintf(stderr, "   hits total:\n%13lld\n", nEventsNoLost + nEventsSomeLost);
 		long long goodFrames = nFrames - nFramesLost0 - nFramesLostN;
-		fprintf(stderr, "   events/frame:\n%13.3f average\n", 1.0 * (nEventsNoLost + nEventsSomeLost) / goodFrames);
+		fprintf(stderr, "   hits/frame:\n%13.3f average\n", 1.0 * (nEventsNoLost + nEventsSomeLost) / goodFrames);
 		sink->report();
 	}
-
 	delete dataFrame;
 	delete sink;
 }

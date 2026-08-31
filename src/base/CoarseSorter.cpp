@@ -53,7 +53,7 @@ void CoarseSorter::resetCounters() {
 void CoarseSorter::report() {
 	u_int64_t nTotal = nSingleRead;
 	fprintf(stderr, ">> CoarseSorter report\n");
-	fprintf(stderr, "   events passed\n");
+	fprintf(stderr, "   hits sorted:\n");
 	fprintf(stderr, "  %13lu\n", nSingleRead);
 	UnorderedEventHandler<RawHit, RawHit>::report();
 }
