@@ -6,65 +6,80 @@
 using namespace PETSYS;
 using namespace std;
 
-SimpleGrouper::SimpleGrouper(SystemConfig *systemConfig, EventSink<GammaPhoton> *sink): 
-								systemConfig(systemConfig), UnorderedEventHandler<Hit, GammaPhoton>(sink) { resetCounters(); }
+SimpleGrouper::SimpleGrouper(SystemConfig *systemConfig, EventSink<GammaPhoton> *sink):
+	systemConfig(systemConfig), UnorderedEventHandler<Hit, GammaPhoton>(sink) {
+	resetCounters();
+}
 
 SimpleGrouper::~SimpleGrouper() {}
 
-// Define a custom comparator to sort by energy in descending order
-auto comp = [](Hit *a, Hit *b) { return a->energy > b->energy; };
+auto comp = [](Hit *a, Hit *b) { return a->energy > b->energy; };   // Define a custom comparator to sort by energy in
+																	// descending order
 
 EventBuffer<GammaPhoton> *SimpleGrouper::handleEvents(EventBuffer<Hit> *inBuffer) {
-	double timeWindow1 = systemConfig->sw_trigger_group_time_window;
-	float radius2 = (systemConfig->sw_trigger_group_max_distance) * (systemConfig->sw_trigger_group_max_distance);
-	float minEnergy = systemConfig->sw_trigger_group_min_energy;
-	float maxEnergy = systemConfig->sw_trigger_group_max_energy;
-	int maxHits = systemConfig->sw_trigger_group_max_hits;
-	if(maxHits > GammaPhoton::maxHits) maxHits = maxHits;
-	int minHits = systemConfig->sw_trigger_group_min_hits;
+	double timeWindow1 = systemConfig->sw_trigger_group_time_window;   // Get the time window for grouping hits into a
+																	   // photon
+	float radius2
+		= (systemConfig->sw_trigger_group_max_distance) * (systemConfig->sw_trigger_group_max_distance);   // Get the
+																										   // square of
+																										   // the
+																										   // maximum
+																										   // distance
+																										   // for
+																										   // grouping
+																										   // hits into
+																										   // a photon
+	float minEnergy = systemConfig->sw_trigger_group_min_energy;   // Get the minimum energy threshold for a photon
+	float maxEnergy = systemConfig->sw_trigger_group_max_energy;   // Get the maximum energy threshold for a photon
+	int maxHits = systemConfig->sw_trigger_group_max_hits;         // Get the maximum number of hits allowed in a photon
+	if(maxHits > GammaPhoton::maxHits)
+		maxHits = maxHits;   // Ensure that maxHits does not exceed the maximum allowed hits in a GammaPhoton
+	int minHits = systemConfig->sw_trigger_group_min_hits;   // Get the minimum number of hits required for a photon
 
-	u_int64_t lPhotonsHits[maxHits];
-	for(int i = 0; i < maxHits; i++) { lPhotonsHits[i] = 0; }
+	u_int64_t lPhotonsHits[maxHits];   // Local array to count the number of photons with a specific number of hits
+	for(int i = 0; i < maxHits; i++) { lPhotonsHits[i] = 0; }   // Initialize the local photon hit count array to zero
 
-	u_int64_t lHitsReceived = 0;
-	u_int64_t lHitsReceivedValid = 0;
-	u_int64_t lPhotonsFound = 0;
-	u_int64_t lPhotonsHitsOverflow = 0;
-	u_int64_t lPhotonsHitsUnderflow = 0;
-	u_int64_t lPhotonsLowEnergy = 0;
-	u_int64_t lPhotonsHighEnergy = 0;
-	u_int64_t lPhotonsPassed = 0;
+	u_int64_t lHitsReceived = 0;           // Number of hits received
+	u_int64_t lHitsReceivedValid = 0;      // Number of valid hits received
+	u_int64_t lPhotonsFound = 0;           // Number of photons found
+	u_int64_t lPhotonsHitsOverflow = 0;    // Number of photons with hits exceeding the maximum allowed
+	u_int64_t lPhotonsHitsUnderflow = 0;   // Number of photons with hits below the minimum required
+	u_int64_t lPhotonsLowEnergy = 0;       // Number of photons with energy below the minimum threshold
+	u_int64_t lPhotonsHighEnergy = 0;      // Number of photons with energy above the maximum threshold
+	u_int64_t lPhotonsPassed = 0;          // Number of photons that passed all criteria and were accepted
 
 	unsigned N = inBuffer->getSize();
 	EventBuffer<GammaPhoton> *outBuffer = new EventBuffer<GammaPhoton>(N, inBuffer);
 	vector<bool> taken(N, false);
 	Hit *hits[maxHits];
 
+	// Loop through each hit in input buffer to group them into photons based on time and spatial proximity
 	for(unsigned i = 0; i < N; i++) {
 		// Do accounting first
-		Hit &hit = inBuffer->get(i);
-		lHitsReceived += 1;
+		Hit &hit = inBuffer->get(i);   // Get current hit from input buffer
+		lHitsReceived += 1;            // Increment local counter for number of hits received
 
-		if(!hit.valid) continue;
-		lHitsReceivedValid += 1;
+		if(!hit.valid) continue;   // If hit is not valid, skip to next iteration
+		lHitsReceivedValid += 1;   // Increment local counter for number of valid hits received
 
-		if(taken[i]) continue;
-		taken[i] = true;
+		if(taken[i]) continue;   // If hit has already been grouped into a photon (taken), skip to next iteration
+		taken[i] = true;         // Mark current hit as taken to avoid processing it again
 
-		uint8_t eventFlags = 0x0;
-		hits[0] = &hit;
-		int nHits = 1;
+		uint8_t eventFlags = 0x0;   // Initialize event flags to zero for current photon
+		hits[0] = &hit;             // Store pointer to the current hit in hits array for current photon
+		int nHits = 1;              // Initialize number of hits for current photon to 1 (the current hit)
 
+		// Loop through remaining hits in input buffer to find hits that can be grouped with current hit into a photon
 		for(int j = i + 1; j < N; j++) {
-			Hit &hit2 = inBuffer->get(j);
-			if(!hit2.valid) continue;
+			Hit &hit2 = inBuffer->get(j);   // Get next hit from input buffer to compare with current hit
+			if(!hit2.valid) continue;       // If next hit is not valid, skip to next iteration
+			if(taken[j])continue;           // If next hit has already been taken, skip to next iteration
 
-			if(taken[j]) continue;
-
-			// Stop searching for more hits for this photon
+			// If time difference between two hits is greater than time window, stop searching for more hits for this photon
 			if((hit2.time - hit.time) > (timeWindow1 + MAX_UNORDER)) break;
-
+			// If two hits aren't allowed to be grouped together, skip to the next iteration
 			if(!systemConfig->isMultiHitAllowed(hit2.region, hit.region)) continue;
+			// If time difference between two hits is greater than time window, skip to the next iteration
 			if(fabs(hit.time - hit2.time) > timeWindow1) continue;
 
 			float u = hit.x - hit2.x;
@@ -74,32 +89,24 @@ EventBuffer<GammaPhoton> *SimpleGrouper::handleEvents(EventBuffer<Hit> *inBuffer
 			if(d2 > radius2) continue;
 
 			taken[j] = true;
-			if(nHits >= maxHits) {
-				// Increase the hit count but don't actually add a hit
-				nHits++;
-			}
+			if(nHits >= maxHits) { nHits++; }   // Increase hit count but don't actually add a hit
 			else {
-				hits[nHits] = &hit2;
-				nHits++;
+				hits[nHits] = &hit2;   // Add pointer to next hit to hits array for current photon
+				nHits++;               // Increment number of hits for current photon
 			}
 		}
 
 		if(nHits > maxHits) {
-			// Flag this event has having excessive hits
-			eventFlags |= 0x1;
-			// and set the number of hits to maximum hits, as code below depends on it
-			nHits = maxHits;
+			eventFlags |= 0x1;   // Flag event as having excessive hits
+			nHits = maxHits;     // Set number of hits to maximum hits, as code below depends on it
 		}
 		else if(nHits < minHits) { eventFlags |= 0x8; }
 
-		// Sorting to put highest energy event first
-
 		bool sorted = false;
-
-		std::sort(hits, hits + nHits, comp);
+		std::sort(hits, hits + nHits, comp);   // Sort to put highest energy event first
 
 		float totalEnergy = 0;
-		// Calculate total energy and assemble the output structure
+		// Calculate total energy and assemble the output structure (input = hit, output = photon)
 		GammaPhoton &photon = outBuffer->getWriteSlot();
 		for(int k = 0; k < nHits; k++) {
 			photon.hits[k] = hits[k];
@@ -123,7 +130,6 @@ EventBuffer<GammaPhoton> *SimpleGrouper::handleEvents(EventBuffer<Hit> *inBuffer
 		else { lPhotonsHitsOverflow += 1; }
 
 		if((eventFlags & 0x8) != 0) lPhotonsHitsUnderflow += 1;
-
 		if((eventFlags & 0x2) != 0) lPhotonsLowEnergy += 1;
 		if((eventFlags & 0x4) != 0) lPhotonsHighEnergy += 1;
 
@@ -150,7 +156,6 @@ EventBuffer<GammaPhoton> *SimpleGrouper::handleEvents(EventBuffer<Hit> *inBuffer
 
 void SimpleGrouper::resetCounters() {
 	for(int i = 0; i < GammaPhoton::maxHits; i++) nPhotonsHits[i] = 0;
-
 	nHitsReceived = 0;
 	nHitsReceivedValid = 0;
 	nPhotonsFound = 0;
@@ -185,7 +190,6 @@ void SimpleGrouper::report() {
 	fprintf(stderr, "   %13lu (%4.1f%%) failed maximim energy\n", nPhotonsHighEnergy, 100.0 * nPhotonsHighEnergy / nPhotonsFound);
 	fprintf(stderr, "   photons passed:\n");
 	fprintf(stderr, "   %13lu (%4.1f%%) passed\n", nPhotonsPassed, 100.0 * nPhotonsPassed / nPhotonsFound);
-
 	UnorderedEventHandler<Hit, GammaPhoton>::report();
 }
 
