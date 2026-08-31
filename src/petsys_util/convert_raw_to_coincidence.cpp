@@ -37,7 +37,10 @@ void displayHelp(char *program) {
 	fprintf(stderr, "  --help \t\t Show this help message and exit \n");
 };
 
-void displayUsage(char *argv0) { printf("Usage: %s --config <config_file> -i <input_file_prefix> -o <output_file_prefix> [optional arguments]\n", argv0); }
+void displayUsage(char *argv0) {
+	printf("Usage: %s --config <config_file> -i <input_file_prefix> -o <output_file_prefix> [optional arguments]\n",
+		   argv0);
+}
 
 int main(int argc, char *argv[]) {
 	char *configFileName = NULL;
@@ -63,7 +66,8 @@ int main(int argc, char *argv[]) {
 		{"simulateHwTrigger", no_argument, 0, 0},
 		{"splitTime", required_argument, 0, 0},
 		{"timeref", required_argument, 0, 0},
-		{"userTimeref", required_argument, 0, 0}};
+		{"userTimeref", required_argument, 0, 0}
+	};
 
 	while(true) {
 		int optionIndex = 0;
@@ -114,12 +118,10 @@ int main(int argc, char *argv[]) {
 		fprintf(stderr, "--config must be specified\n");
 		exit(1);
 	}
-
 	if(inputFilePrefix == NULL) {
 		fprintf(stderr, "-i must be specified\n");
 		exit(1);
 	}
-
 	if(outputFileName == NULL) {
 		fprintf(stderr, "-o must be specified\n");
 		exit(1);
@@ -130,12 +132,20 @@ int main(int argc, char *argv[]) {
 	unsigned long long mask = SystemConfig::LOAD_ALL;
 	// If data was taken in full ToT mode, do not attempt to load these files
 	if(reader->isTOT()) { mask ^= (SystemConfig::LOAD_QDC_CALIBRATION | SystemConfig::LOAD_ENERGY_CALIBRATION); }
-
 	if(!simulateHwTrigger) { mask ^= (SystemConfig::LOAD_FIRMWARE_EMPIRICAL_CALIBRATIONS); }
 
 	SystemConfig *config = SystemConfig::fromFile(configFileName, mask);
 
-	DataFileWriter *dataFileWriter = new DataFileWriter(outputFileName, false, reader->getFrequency(), COINCIDENCE, fileType, userTimeref, hitLimitToWrite, eventFractionToWrite, fileSplitTime);
+	DataFileWriter *dataFileWriter = new DataFileWriter(
+		outputFileName,
+		false,
+		reader->getFrequency(),
+		COINCIDENCE,
+		fileType,
+		userTimeref,
+		hitLimitToWrite,
+		eventFractionToWrite,
+		fileSplitTime);
 
 	int stepIndex = 0;
 	while(reader->getNextStep()) {
@@ -148,22 +158,33 @@ int main(int argc, char *argv[]) {
 		if(!simulateHwTrigger) {
 			reader->processStep(
 				true,
-				new CoarseSorter(new ProcessHit(config, reader, new SimpleGrouper(config, new CoincidenceGrouper(config, new WriteCoincidencesHelper(dataFileWriter, new NullSink<Coincidence>()))))));
+				new CoarseSorter(new ProcessHit(
+					config,
+					reader,
+					new SimpleGrouper(
+						config,
+						new CoincidenceGrouper(
+							config,
+							new WriteCoincidencesHelper(dataFileWriter, new NullSink<Coincidence>()))))));
 		}
 		else {
 			reader->processStep(
 				true,
 				new HwTriggerSimulator(
 					config,
-					new ProcessHit(config, reader, new SimpleGrouper(config, new CoincidenceGrouper(config, new WriteCoincidencesHelper(dataFileWriter, new NullSink<Coincidence>()))))));
+					new ProcessHit(
+						config,
+						reader,
+						new SimpleGrouper(
+							config,
+							new CoincidenceGrouper(
+								config,
+								new WriteCoincidencesHelper(dataFileWriter, new NullSink<Coincidence>()))))));
 		}
-
 		dataFileWriter->closeStep();
 		stepIndex += 1;
 	}
-
 	delete dataFileWriter;
 	delete reader;
-
 	return 0;
 }
