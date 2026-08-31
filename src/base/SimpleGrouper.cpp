@@ -17,18 +17,9 @@ auto comp = [](Hit *a, Hit *b) { return a->energy > b->energy; };   // Define a 
 																	// descending order
 
 EventBuffer<GammaPhoton> *SimpleGrouper::handleEvents(EventBuffer<Hit> *inBuffer) {
-	double timeWindow1 = systemConfig->sw_trigger_group_time_window;   // Get the time window for grouping hits into a
-																	   // photon
-	float radius2
-		= (systemConfig->sw_trigger_group_max_distance) * (systemConfig->sw_trigger_group_max_distance);   // Get the
-																										   // square of
-																										   // the
-																										   // maximum
-																										   // distance
-																										   // for
-																										   // grouping
-																										   // hits into
-																										   // a photon
+	double timeWindow1 = systemConfig->sw_trigger_group_time_window;   // Get the time window for grouping hits into a photon
+	// Get the square of the maximum distance for grouping hits into a photon
+	float radius2 = (systemConfig->sw_trigger_group_max_distance) * (systemConfig->sw_trigger_group_max_distance);
 	float minEnergy = systemConfig->sw_trigger_group_min_energy;   // Get the minimum energy threshold for a photon
 	float maxEnergy = systemConfig->sw_trigger_group_max_energy;   // Get the maximum energy threshold for a photon
 	int maxHits = systemConfig->sw_trigger_group_max_hits;         // Get the maximum number of hits allowed in a photon
@@ -55,7 +46,6 @@ EventBuffer<GammaPhoton> *SimpleGrouper::handleEvents(EventBuffer<Hit> *inBuffer
 
 	// Loop through each hit in input buffer to group them into photons based on time and spatial proximity
 	for(unsigned i = 0; i < N; i++) {
-		// Do accounting first
 		Hit &hit = inBuffer->get(i);   // Get current hit from input buffer
 		lHitsReceived += 1;            // Increment local counter for number of hits received
 
