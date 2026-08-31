@@ -10,7 +10,9 @@
 #include <string.h>
 #include <string>
 
-extern "C" { #include <iniparser.h> }
+extern "C" {
+#include <iniparser.h>
+}
 
 using namespace PETSYS;
 
