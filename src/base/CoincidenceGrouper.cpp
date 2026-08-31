@@ -26,8 +26,9 @@ EventBuffer<Coincidence> *CoincidenceGrouper::handleEvents(EventBuffer<GammaPhot
 
 	// Loop through each photon in input buffer to find coincidences with other photons based on time and region
 	for(unsigned i = 0; i < N; i++) {
-		lPhotonsReceived++;
 		GammaPhoton &photon1 = inBuffer->get(i);   // Get current photon from input buffer
+		lPhotonsReceived+=1;
+
 		// Loop through remaining photons in input buffer to find coincidences with current photon
 		for(unsigned j = i + 1; j < N; j++) {
 			GammaPhoton &photon2 = inBuffer->get(j);   // Get next photon from input buffer to compare with current photon
@@ -41,7 +42,6 @@ EventBuffer<Coincidence> *CoincidenceGrouper::handleEvents(EventBuffer<GammaPhot
 				lPromptsRegion++;
 				continue; 
 			}
-
 			// If time diff between photons is within coincidence window
 			if(fabs(photon1.time - photon2.time) <= cWindow) {
 				Coincidence &c = outBuffer->getWriteSlot();      // Get write slot in output buffer for coinc
