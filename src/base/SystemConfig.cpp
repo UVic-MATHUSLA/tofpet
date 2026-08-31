@@ -10,9 +10,7 @@
 #include <string.h>
 #include <string>
 
-extern "C" {
-#include <iniparser.h>
-}
+extern "C" { #include <iniparser.h> }
 
 using namespace PETSYS;
 
@@ -23,18 +21,30 @@ SystemConfig *SystemConfig::fromFile(const char *configFileName) {
 
 static void replace_variables(char *fn, const char *entry, char *cdir) {
 	std::string tmp(entry);
-
 	boost::ireplace_all(tmp, "%PWD%", ".");
 	boost::ireplace_all(tmp, "%CDIR%", cdir);
 	boost::ireplace_all(tmp, "%HOME%", getenv("HOME"));
 	strncpy(fn, tmp.c_str(), PATH_MAX);
 }
 
+static void printConfigSummary(SystemConfig *config) {
+    std::cout << "=== PETsys config summary ===\n";
+    std::cout << "TDC calibration: " << (config->useTDCCalibration() ? "enabled" : "disabled") << "\n";
+    std::cout << "QDC calibration: " << (config->useQDCCalibration() ? "enabled" : "disabled") << "\n";
+    std::cout << "Energy calibration: " << (config->useEnergyCalibration() ? "enabled" : "disabled") << "\n";
+    std::cout << "XYZ mapping: " << (config->useXYZ() ? "enabled" : "disabled") << "\n";
+    std::cout << "group_max_hits: " << config->sw_trigger_group_max_hits << "\n";
+    std::cout << "group_min_hits: " << config->sw_trigger_group_min_hits << "\n";
+    std::cout << "group_time_window: " << config->sw_trigger_group_time_window << "\n";
+    std::cout << "coincidence_time_window: " << config->sw_trigger_coincidence_time_window << "\n";
+    std::cout << "trigger_group_max_distance: " << config->sw_trigger_group_max_distance << "\n";
+    std::cout << "================================\n";
+}
+
 SystemConfig *SystemConfig::fromFile(const char *configFileName, u_int64_t mask) {
 	char *path = new char[PATH_MAX];
 	strcpy(path, configFileName);
 	char *cdir = dirname(path);
-
 	char *fn = new char[PATH_MAX];
 	char *fn2 = new char[PATH_MAX];
 
@@ -103,7 +113,7 @@ SystemConfig *SystemConfig::fromFile(const char *configFileName, u_int64_t mask)
 		}
 	}
 
-	// Load trigger configuration
+	// Load default trigger configuration
 	config->sw_trigger_group_max_hits = iniparser_getint(configFile, "sw_trigger:group_max_hits", 64);
 	config->sw_trigger_group_min_hits = iniparser_getint(configFile, "sw_trigger:group_min_hits", 1);
 	config->sw_trigger_group_min_energy = iniparser_getdouble(configFile, "sw_trigger:group_min_energy", -1E6);
@@ -126,7 +136,6 @@ SystemConfig *SystemConfig::fromFile(const char *configFileName, u_int64_t mask)
 			fprintf(stderr, "ERROR: hwtrigger_empirical_calibration_table not specified in section 'hw_trigger' of '%s'\n", configFileName);
 			exit(1);
 		}
-
 		if(areHwTriggerThresholdsDefault(config)) {
 			const char *entry2 = iniparser_getstring(configFile, "main:tdc_calibration_table", NULL);
 			replace_variables(fn2, entry2, cdir);
@@ -138,9 +147,8 @@ SystemConfig *SystemConfig::fromFile(const char *configFileName, u_int64_t mask)
 		}
 		config->hasFirmwareEmpiricalCalibrations = true;
 	}
-
+	printConfigSummary(config);
 	iniparser_freedict(configFile);
-
 	delete[] fn;
 	delete[] path;
 	return config;
@@ -161,7 +169,6 @@ SystemConfig::SystemConfig() {
 	hasTDCCalibration = false;
 	hasQDCCalibration = false;
 	hasXYZ = false;
-
 	channelConfig = new ChannelConfig *[PATH_MAX];
 	for(unsigned n = 0; n < PATH_MAX; n++) { channelConfig[n] = NULL; }
 
@@ -179,7 +186,6 @@ SystemConfig::SystemConfig() {
 		nullChannelConfig.triggerRegion = -1;
 		nullChannelConfig.t0 = 0.0;
 	}
-
 	coincidenceTriggerMap = new bool[MAX_TRIGGER_REGIONS * MAX_TRIGGER_REGIONS];
 	for(int i = 0; i < MAX_TRIGGER_REGIONS * MAX_TRIGGER_REGIONS; i++) coincidenceTriggerMap[i] = false;
 
@@ -190,15 +196,11 @@ SystemConfig::SystemConfig() {
 SystemConfig::~SystemConfig() {
 	delete[] multihitTriggerMap;
 	delete[] coincidenceTriggerMap;
-
-	for(unsigned n = 0; n < PATH_MAX; n++) {
-		if(channelConfig[n] != NULL) { delete[] channelConfig[n]; }
-	}
+	for(unsigned n = 0; n < PATH_MAX; n++) { if(channelConfig[n] != NULL) { delete[] channelConfig[n]; } }
 	delete channelConfig;
 }
 
-// Remove comments and extra whitespace
-// Leaving only fiels separated by a single \t character
+// Remove comments and extra whitespace, leave only fields separated by a single \t character
 static void normalizeLine(char *line) {
 	std::string s = std::string(line);
 	s = boost::regex_replace(s, boost::regex("\r"), "");        // Remove carriage return, from Windows written files
@@ -232,16 +234,13 @@ void SystemConfig::loadTDCCalibration(SystemConfig *config, const char *fn) {
 		unsigned portID, slaveID, chipID, channelID, tacID;
 		char bStr;
 		float t0, a0, a1, a2;
-
 		if(sscanf(line, "%d\t%u\t%u\t%u\t%u\t%c\t%f\t%f\t%f\t%f\n", &portID, &slaveID, &chipID, &channelID, &tacID, &bStr, &t0, &a0, &a1, &a2) != 10) continue;
 
 		unsigned long gChannelID = MAKE_GID(portID, slaveID, chipID, channelID);
 
 		config->touchChannelConfig(gChannelID);
 		ChannelConfig &channelConfig = config->getChannelConfig(gChannelID);
-
 		TacConfig &tacConfig = (bStr == 'T') ? channelConfig.tac_T[tacID] : channelConfig.tac_E[tacID];
-
 		tacConfig.t0 = t0;
 		tacConfig.a0 = a0;
 		tacConfig.a1 = a1;
@@ -263,17 +262,13 @@ void SystemConfig::loadQDCCalibration(SystemConfig *config, const char *fn) {
 
 		unsigned portID, slaveID, chipID, channelID, tacID;
 		float p0, p1, p2, p3, p4, p5, p6, p7, p8, p9;
-
 		if(sscanf(line, "%d\t%u\t%u\t%u\t%u\t\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\n", &portID, &slaveID, &chipID, &channelID, &tacID, &p0, &p1, &p2, &p3, &p4, &p5, &p6, &p7, &p8, &p9) != 15)
 			continue;
 
 		unsigned long gChannelID = MAKE_GID(portID, slaveID, chipID, channelID);
-
 		config->touchChannelConfig(gChannelID);
 		ChannelConfig &channelConfig = config->getChannelConfig(gChannelID);
-
 		QacConfig &qacConfig = channelConfig.qac_Q[tacID];
-
 		qacConfig.p0 = p0;
 		qacConfig.p1 = p1;
 		qacConfig.p2 = p2;
@@ -308,16 +303,12 @@ void SystemConfig::loadFirmwareEmpiricalCalibration(SystemConfig *config, const 
 
 		unsigned portID, slaveID, chipID, channelID, tacID;
 		float p0, p1, p2, k0;
-
 		if(sscanf(line, "%d\t%u\t%u\t%u\t%u\t\t%f\t%f\t%f\t%f\n", &portID, &slaveID, &chipID, &channelID, &tacID, &p0, &p1, &p2, &k0) != 9) continue;
 
 		unsigned long gChannelID = MAKE_GID(portID, slaveID, chipID, channelID);
-
 		config->touchChannelConfig(gChannelID);
 		ChannelConfig &channelConfig = config->getChannelConfig(gChannelID);
-
 		FirmwareConfig &empConfig = channelConfig.empConfig[tacID];
-
 		empConfig.p0 = p0;
 		empConfig.p1 = p1;
 		empConfig.p2 = p2;
@@ -340,16 +331,12 @@ void SystemConfig::makeSimpleFirmwareEmpiricalCalibration(SystemConfig *config, 
 		unsigned portID, slaveID, chipID, channelID, tacID;
 		char bStr;
 		float t0, a0, a1, a2;
-
 		if(sscanf(line, "%d\t%u\t%u\t%u\t%u\t%c\t%f\t%f\t%f\t%f\n", &portID, &slaveID, &chipID, &channelID, &tacID, &bStr, &t0, &a0, &a1, &a2) != 10) continue;
 
 		unsigned long gChannelID = MAKE_GID(portID, slaveID, chipID, channelID);
-
 		config->touchChannelConfig(gChannelID);
 		ChannelConfig &channelConfig = config->getChannelConfig(gChannelID);
-
 		FirmwareConfig &empConfig = channelConfig.empConfig[tacID];
-
 		empConfig.p0 = 1;
 		empConfig.p1 = 0;
 		empConfig.p2 = 0;
@@ -371,16 +358,12 @@ void SystemConfig::loadEnergyCalibration(SystemConfig *config, const char *fn) {
 
 		unsigned portID, slaveID, chipID, channelID, tacID;
 		float p0, p1, p2, p3;
-
 		if(sscanf(line, "%d\t%u\t%u\t%u\t%u\t\t%f\t%f\t%f\t%f\n", &portID, &slaveID, &chipID, &channelID, &tacID, &p0, &p1, &p2, &p3) != 9) continue;
 
 		unsigned long gChannelID = MAKE_GID(portID, slaveID, chipID, channelID);
-
 		config->touchChannelConfig(gChannelID);
 		ChannelConfig &channelConfig = config->getChannelConfig(gChannelID);
-
 		EnergyConfig &eCal = channelConfig.eCal[tacID];
-
 		eCal.p0 = p0;
 		eCal.p1 = p1;
 		eCal.p2 = p2;
@@ -403,14 +386,11 @@ void SystemConfig::loadTimeOffsetCalibration(SystemConfig *config, const char *f
 		unsigned portID, slaveID, chipID;
 		int channelID;
 		float t0;
-
 		if(sscanf(line, "%u\t%u\t%u\t%d\t%f\n", &portID, &slaveID, &chipID, &channelID, &t0) != 5) continue;
 
 		unsigned long gChannelID = MAKE_GID(portID, slaveID, chipID, channelID);
-
 		config->touchChannelConfig(gChannelID);
 		ChannelConfig &channelConfig = config->getChannelConfig(gChannelID);
-
 		channelConfig.t0 = t0;
 	}
 
@@ -423,7 +403,6 @@ void SystemConfig::loadChannelMap(SystemConfig *config, const char *fn) {
 		fprintf(stderr, "Could not open '%s' for reading: %s\n", fn, strerror(errno));
 		exit(1);
 	}
-
 	std::set<unsigned> triggerRegionsSet;
 
 	char line[PATH_MAX];
@@ -434,7 +413,6 @@ void SystemConfig::loadChannelMap(SystemConfig *config, const char *fn) {
 		unsigned portID, slaveID, chipID, channelID;
 		int region, xi, yi;
 		float x, y, z;
-
 		if(sscanf(line, "%u\t%u\t%u\t%u\t%d\t%d\t%d\t%f\t%f\t%f\n", &portID, &slaveID, &chipID, &channelID, &region, &xi, &yi, &x, &y, &z) != 10) continue;
 
 		if(triggerRegionsSet.find(region) != triggerRegionsSet.end()) {
@@ -444,9 +422,7 @@ void SystemConfig::loadChannelMap(SystemConfig *config, const char *fn) {
 		triggerRegionsSet.insert(region);
 
 		unsigned long gChannelID = MAKE_GID(portID, slaveID, chipID, channelID);
-
 		config->touchChannelConfig(gChannelID);
-
 		ChannelConfig &channelConfig = config->getChannelConfig(gChannelID);
 		channelConfig.triggerRegion = region;
 		channelConfig.xi = xi;
@@ -477,7 +453,6 @@ void SystemConfig::loadTriggerMap(SystemConfig *config, const char *fn) {
 			fprintf(stderr, "Error on '%s' line %d: line should have 3 entries\n", fn, lineNumber);
 			exit(1);
 		}
-
 		if((r1 < 0) || (r1 >= MAX_TRIGGER_REGIONS) || (r2 < 0) || (r2 >= MAX_TRIGGER_REGIONS)) {
 			fprintf(stderr, "Error on '%s' line %d: trigger region number must be between 0 and %d", fn, lineNumber, MAX_TRIGGER_REGIONS);
 			exit(1);
@@ -487,7 +462,6 @@ void SystemConfig::loadTriggerMap(SystemConfig *config, const char *fn) {
 			fprintf(stderr, "Error on '%s' line %d: trigger type must be M or C", fn, lineNumber);
 			exit(1);
 		}
-
 		config->coincidenceTriggerMap[r1 * MAX_TRIGGER_REGIONS + r2] = (c == 'C');
 		config->coincidenceTriggerMap[r2 * MAX_TRIGGER_REGIONS + r1] = (c == 'C');
 		config->multihitTriggerMap[r1 * MAX_TRIGGER_REGIONS + r2] = (c == 'M');
