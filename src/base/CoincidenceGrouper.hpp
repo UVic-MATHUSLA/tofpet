@@ -15,11 +15,11 @@ namespace PETSYS {
 		virtual void resetCounters();
 	  private:
 		virtual EventBuffer<Coincidence> *handleEvents(EventBuffer<GammaPhoton> *inBuffer);
-
 		SystemConfig *systemConfig;
 		u_int64_t nPrompts;
+		u_int64_t nPromptsRegion;
+		u_int64_t nPromptsTime;
 		u_int64_t nCoincPhotopeak;
-		u_int64_t nListModeControl;
 	};
 }   // namespace PETSYS
 #endif   // __PETSYS__COINCIDENCEGROUPER_HPP__DEFINED__
